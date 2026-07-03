@@ -1,6 +1,7 @@
 # CLAUDE.md — run-drafter-webform
 
 @.fieldkit/CLAUDE.md
+@.fieldkit/conventions/python/README.md
 
 ## Project guide
 
