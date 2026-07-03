@@ -2,8 +2,8 @@
 default:
     @just --list
 
-# Lint all markdown.
-check:
+# Run static checks (markdown lint).
+lint:
     uvx rumdl@0.2.26 check .
 
 # Auto-fix markdown issues.
@@ -25,3 +25,6 @@ serve:
 # Run the test suite.
 test:
     uv run pytest
+
+# Run all tests.
+check: test
