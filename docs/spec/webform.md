@@ -33,47 +33,26 @@ wrong — fix the spec.
 
 ## Resolved decisions
 
-Non-obvious decisions made up front. Each becomes an ADR in `docs/decisions/`
-(task T8); rationale summarised here.
+Non-obvious decisions made up front. Each is recorded as an ADR in
+`docs/decisions/` — the ADR holds the *why* and the rejected alternatives; the
+one-liners below are the decision the rest of this spec builds on.
 
-1. **Vanilla, no build step for the runtime.** The shipped site is plain
-   hand-authored `index.html` + CSS + JS, served as-is and openable from
-   `file://`. No bundler or transpiler in the ship path. Rejected: a Vite +
-   framework setup — cleaner component code, but it drags a full JS toolchain
-   and a build-to-deploy pipeline into an otherwise toolchain-free, zero-infra
-   product. Node appears only in *dev/CI tooling* (contract sync + tests),
-   never in what gets served. **Flag:** node-in-CI for tests is the one place
-   this admits tooling; see "Testing". If even that is unwanted, say so and we
-   lean on upstream schema tests + manual QA instead.
+1. **Vanilla runtime, no build step** — plain hand-authored HTML/CSS/JS served
+   as-is; node only in dev/CI tooling, never in the shipped page.
+   ([ADR 001](../decisions/001-vanilla-no-build-step.md))
+2. **Validate against the real schema, client-side, before handoff** — vendored
+   schema + Ajv in the browser; an invalid object blocks the download.
+   ([ADR 002](../decisions/002-client-side-schema-validation.md))
+3. **Uniform email handoff: download + prefilled `mailto:`** — the same
+   download-then-attach flow on every device; no Web Share, no JSON in the body.
+   ([ADR 003](../decisions/003-uniform-mailto-handoff.md))
+4. **Host as an org GitHub Pages site at the root URL** — `<org>.github.io`
+   (e.g. `run-drafter`), not a project-path or custom-domain site.
+   ([ADR 004](../decisions/004-org-pages-root-hosting.md))
 
-2. **Validate the assembled object against the real schema, client-side,
-   before handoff.** The whole point of the form is to guarantee a *valid*
-   intake. We vendor the schema and run Ajv in the browser; an invalid object
-   shows errors and blocks the download/send. Rejected: form-level (HTML5 +
-   ad-hoc JS) validation only — lighter, but a logic gap or schema drift could
-   let an invalid file out the door.
-
-3. **Uniform email handoff: download + prefilled `mailto:`, the same on every
-   device.** After a valid submission the form downloads `intake.json` and
-   offers one **Email it in** button that opens the runner's mail app,
-   pre-addressed with a subject and a basic message, telling them to attach the
-   file they just downloaded. The manual attach step is the same everywhere —
-   one predictable mental model.
-   - Rejected: the **Web Share API** (attach on supported devices, fall back
-     elsewhere). It *can* auto-attach on some mobile/desktop browsers, but
-     training runners to expect an auto-attach that silently isn't there on
-     other devices is worse than one consistent flow.
-   - Rejected: embedding the JSON in the `mailto:` body — body length is
-     client-limited and can *silently truncate*, sending partial intake data.
-   A static page cannot attach a file to an email itself, and there is no
-   backend to send mail; the manual attach is the honest floor.
-
-4. **Host as a GitHub user/org Pages site at the root URL.** Create a GitHub
-   org (org names may contain hyphens, so `run-drafter` →
-   `https://run-drafter.github.io`; fall back to `rundrafter` if taken) and
-   serve this repo as `<org>.github.io` from its root. Rejected: a project
-   Pages site (`eirkkr.github.io/run-drafter-webform` — path reads the repo
-   name) and a custom domain (needs a registered domain + DNS).
+**Flag carried from ADR 001:** node-in-CI for tests is the one place the
+runtime's no-toolchain rule admits tooling (see "Testing"). If even that is
+unwanted, say so and we lean on upstream schema tests + manual QA instead.
 
 ---
 
@@ -251,9 +230,10 @@ thin path running end to end, then layer.
   email, identically across browsers.
 - **T7 — Styling + UX.** Responsive, theme-aware, accessible labels, inline
   error surfacing. *DoD:* usable on mobile; errors legible.
-- **T8 — ADRs + README.** Write ADRs 001–004 (stack / validation / handoff /
-  hosting), index them in `docs/decisions/README.md`, and update `README.md`
-  status + local-dev + contract-sync instructions. *DoD:* docs match the code.
+- **T8 — README + docs.** ADRs 001–004 (stack / validation / handoff / hosting)
+  and their register are written; update `README.md` local-dev + contract-sync
+  instructions, and revisit each ADR's "Consequences" against what was actually
+  built. *DoD:* docs match the code.
 - **T9 — Deploy (see Manual steps).** *DoD:* form live at `<org>.github.io`.
 
 ---
