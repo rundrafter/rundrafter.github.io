@@ -292,7 +292,7 @@ These need you; the build tasks above don't block on them except T9.
 - [x] T2 — Required sections complete
 - [x] T3 — Optional sections + pruning
 - [x] T4 — Cross-field + conditional logic
-- [ ] T5 — Test suite + fixtures
+- [x] T5 — Test suite + fixtures
 - [ ] T6 — Email handoff + success screen
 - [ ] T7 — Styling + UX
 - [ ] T8 — ADRs + README
