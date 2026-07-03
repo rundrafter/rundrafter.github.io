@@ -49,7 +49,6 @@ one-liners below are the decision the rest of this spec builds on.
 4. **Host as an org GitHub Pages site at the root URL** — `<org>.github.io`
    (e.g. `run-drafter`), not a project-path or custom-domain site.
    ([ADR 004](../decisions/004-org-pages-root-hosting.md))
-
 5. **No node or npm anywhere in this repo, including dev/CI** — all tooling is
    Python; tests that exercise the shipped JS do so by driving a real browser
    with Playwright's Python bindings, not by running the JS under node.
@@ -238,7 +237,7 @@ thin path running end to end, then layer.
   ordering, disclaimer gate, ≥1 output format, timestamps at handoff.
   *DoD:* each rule covered by a test.
 - **T5 — Test suite + fixtures.** `tests/test_assemble.py` (pytest + Playwright)
-  + fixtures; add Playwright as a `uv` dev dependency; CI runs tests + drift
+  - fixtures; add Playwright as a `uv` dev dependency; CI runs tests + drift
   check. *DoD:* `just test` and CI green, no node/npm anywhere.
 - **T6 — Email handoff + success screen.** `handoff.js`: download + prefilled
   mailto, composed subject/message, return address text, download-again link.
