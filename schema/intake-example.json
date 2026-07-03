@@ -1,0 +1,92 @@
+{
+  "meta": {
+    "schema_version": "1",
+    "submitted_at": "2026-06-22T09:15:00+10:00"
+  },
+  "units": "km",
+  "runner": {
+    "name": "Alex Smith",
+    "age": 38,
+    "sex": "M",
+    "experience": "experienced"
+  },
+  "goal": {
+    "race": "Melbourne Marathon",
+    "distance": "marathon",
+    "date": "2026-10-18",
+    "target_time": "3:59:00",
+    "start_date": "2026-06-30"
+  },
+  "recent_result": {
+    "distance": "5k",
+    "time": "22:10",
+    "date": "2026-06-07"
+  },
+  "current_fitness": {
+    "weekly_distance": 40,
+    "longest_run": 18,
+    "recent_peak_weekly": 50
+  },
+  "weekly_schedule": {
+    "days_available": 5,
+    "long_run_day": "Sunday",
+    "rest_days": ["Monday", "Friday"],
+    "preferred_sessions": [
+      {"day": "Tuesday", "description": "intervals with running club"},
+      {"day": "Saturday", "description": "parkrun"}
+    ]
+  },
+  "strength_cross": {
+    "strength_per_week": 2,
+    "strength_days": ["Wednesday", "Friday"],
+    "strength_type": "gym weights and core",
+    "warmup_jog": false
+  },
+  "preferences": {
+    "calibrate_to": "current",
+    "build_mode": "standard"
+  },
+  "injuries": [
+    {
+      "area": "left achilles",
+      "status": "recent",
+      "notes": "Slight tightness after long runs, settled down over the last few weeks."
+    }
+  ],
+  "health_screen": {
+    "heart_condition": false,
+    "chest_pain_activity": false,
+    "chest_pain_rest": false,
+    "dizziness_balance": false,
+    "bone_joint_problem": false,
+    "bp_or_heart_meds": false,
+    "pregnancy": false,
+    "recent_surgery_illness": false
+  },
+  "consent": {
+    "disclaimer_accepted": true,
+    "accepted_at": "2026-06-22T09:15:00+10:00"
+  },
+  "b_races": [
+    {
+      "name": "Ballarat Half Marathon",
+      "distance": "half",
+      "date": "2026-08-30",
+      "target_time": "1:47:00"
+    }
+  ],
+  "other_events": [
+    {
+      "name": "Bridge to Brisbane",
+      "distance": "10k",
+      "date": "2026-08-16"
+    }
+  ],
+  "notes": {
+    "other": ""
+  },
+  "output": {
+    "formats": ["spreadsheet", "pdf"],
+    "tracking": true
+  }
+}

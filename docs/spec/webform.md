@@ -261,12 +261,19 @@ These need you; the build tasks above don't block on them except T9.
 6. **Confirm node-in-CI is acceptable** for tests (or veto it; see Testing).
 7. *(Optional, later)* register a custom domain if you outgrow the
    `github.io` URL.
+8. **CI contract-drift check needs a token.** `run-drafter` is private, so the
+   `contract-drift` CI job (unauthenticated `raw.githubusercontent.com` fetch)
+   404s and was dropped from `ci.yml` in T0. To restore it, create a
+   fine-grained PAT scoped read-only to `eirkkr/run-drafter`, add it as a repo
+   secret, and have `scripts/sync_contract.py` send it as an `Authorization`
+   header (or checkout the repo directly) in CI. `just check-contract` still
+   works locally against the sibling checkout in the meantime.
 
 ---
 
 ## Progress
 
-- [ ] T0 — Tooling + vendored contract
+- [x] T0 — Tooling + vendored contract
 - [ ] T1 — Walking skeleton (end-to-end valid download)
 - [ ] T2 — Required sections complete
 - [ ] T3 — Optional sections + pruning
