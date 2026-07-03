@@ -29,6 +29,9 @@ jobs:
 
       - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
 
+      - name: Install Playwright browsers
+        run: uv run playwright install --with-deps chromium
+
       - run: just test
 
   # contract-drift is deferred: run-drafter is private, so an unauthenticated
