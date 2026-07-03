@@ -3,9 +3,10 @@
 ## Decision
 
 The form ships as plain, hand-authored static files — `index.html`,
-`assets/*.css`, `assets/*.js` (ES modules) — served exactly as written and
-openable from `file://`. There is no bundler, transpiler, or framework in the
-path that produces what the browser loads.
+`assets/*.css`, `assets/*.js` (ES modules) — served exactly as written, with no
+bundler, transpiler, or framework in the path that produces what the browser
+loads. Local use (and tests) run it through a static file server (`just
+serve`), not by opening `index.html` via `file://`.
 
 **No node or npm anywhere in this repo, including dev/CI.** All tooling —
 contract sync, the vendored Ajv bundle, and the test suite — is Python. Tests
@@ -40,6 +41,12 @@ GitHub Pages, and read without a build graph in the way. Alternatives rejected:
 
 ## Consequences
 
+- `<script type="module">` is fetched under CORS rules, and Chrome (unlike
+  Firefox) refuses that fetch for a `file://` document origin — so a page
+  opened by double-clicking `index.html` silently fails to run any JS in
+  Chrome. The page therefore always needs a static server, even for local use:
+  `just serve` (dev) or GitHub Pages (deployed). Playwright's test browser
+  loads the page the same way, over `http://`, not via `file://`.
 - Repeating sections and conditional logic are more verbose in vanilla JS than
   in a framework; `assemble.js` is kept a pure, import-clean module so the
   verbosity stays testable and out of the DOM code, even though it's tested

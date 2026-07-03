@@ -52,9 +52,58 @@ function pruneRepeatingSection(rows) {
   return kept.length > 0 ? kept : undefined;
 }
 
+// Cross-field product rules the schema can't express (see docs/spec/webform.md).
+// Returns human-readable messages; an empty array means the rules all pass.
+function validateCrossField(formState) {
+  const errors = [];
+  const goal = formState.goal ?? {};
+  const consent = formState.consent ?? {};
+  const healthScreen = formState.health_screen ?? {};
+  const output = formState.output ?? {};
+
+  if (consent.disclaimer_accepted !== true) {
+    errors.push("You must accept the disclaimer to continue.");
+  }
+
+  const healthFlagRaised = Object.entries(healthScreen).some(
+    ([key, value]) => key !== "other_reason" && value === true,
+  );
+  if (healthFlagRaised && consent.health_acknowledged !== true) {
+    errors.push(
+      "Please acknowledge the medical-clearance guidance before continuing.",
+    );
+  }
+
+  if (goal.start_date && goal.date && goal.start_date > goal.date) {
+    errors.push("Plan start date must be on or before the race date.");
+  }
+
+  for (const race of formState.b_races ?? []) {
+    if (race?.date && goal.date && race.date >= goal.date) {
+      errors.push(
+        `B race "${race.name || race.date}" date must be before the goal race date.`,
+      );
+    }
+  }
+
+  for (const event of formState.other_events ?? []) {
+    if (event?.date && goal.date && event.date >= goal.date) {
+      errors.push(
+        `Other event "${event.name || event.date}" date must be before the goal race date.`,
+      );
+    }
+  }
+
+  if (!Array.isArray(output.formats) || output.formats.length === 0) {
+    errors.push("Select at least one output format.");
+  }
+
+  return errors;
+}
+
 export function assemble(formState, { now } = {}) {
   const timestamp = now ?? new Date().toISOString();
-  const errors = [];
+  const errors = validateCrossField(formState);
 
   const runner = pruneOptionalObject(formState.runner);
   const strengthCross = pruneStrengthCross(formState.strength_cross);

@@ -291,7 +291,7 @@ These need you; the build tasks above don't block on them except T9.
 - [x] T1 — Walking skeleton (end-to-end valid download)
 - [x] T2 — Required sections complete
 - [x] T3 — Optional sections + pruning
-- [ ] T4 — Cross-field + conditional logic
+- [x] T4 — Cross-field + conditional logic
 - [ ] T5 — Test suite + fixtures
 - [ ] T6 — Email handoff + success screen
 - [ ] T7 — Styling + UX

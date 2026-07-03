@@ -36,7 +36,9 @@ copy running under a different JS runtime.
 - Ajv (~one vendored JS bundle) is a committed runtime dependency, pinned and
   updated by hand; it is the only third-party code the page loads.
 - The vendored schema is inlined as `assets/schema.js` (an ES-module export) so
-  validation needs no `fetch` and works from `file://`.
+  validation needs no separate `fetch` of the schema file. (The page as a whole
+  still needs a static server rather than `file://`, for the unrelated reason
+  in ADR 001's consequences: Chrome blocks `file://` module-script loads.)
 - Validation is only as current as the last `sync-contract` run; the CI drift
   check is what keeps "vendored" from meaning "stale".
 - Cross-field product rules the schema can't express (date ordering, the
