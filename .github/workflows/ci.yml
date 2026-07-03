@@ -31,15 +31,7 @@ jobs:
 
       - run: just test
 
-  contract-drift:
-    runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install just
-        run: curl -sSfL https://just.systems/install.sh | bash -s -- --to /usr/local/bin
-
-      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
-
-      - run: just check-contract
+  # contract-drift is deferred: run-drafter is private, so an unauthenticated
+  # raw.githubusercontent.com fetch 404s in CI. Revisit once a scoped PAT
+  # secret exists for cross-repo access; `just check-contract` still works
+  # locally against the sibling checkout.
