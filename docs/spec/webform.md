@@ -61,24 +61,24 @@ unwanted, say so and we lean on upstream schema tests + manual QA instead.
 Drive every field, input type, label, and enum from `run-drafter/docs/intake.md`.
 Summary of the intake object's top level (see the schema for exact types):
 
-| Section | Required? | Notes |
-| ------- | --------- | ----- |
-| `meta` | system | `schema_version: "1"`, `submitted_at` (ISO 8601) set at handoff time — not a form field |
-| `units` | yes | radio km/mi; controls distance labels, does **not** convert values |
-| `runner` | optional | name, age, sex, experience |
-| `goal` | yes | race, distance, date, target_time, start_date |
-| `recent_result` | yes | distance, time, date |
-| `current_fitness` | yes | weekly_distance, longest_run, recent_peak_weekly (opt) |
-| `weekly_schedule` | yes | days_available, long_run_day, rest_days (multi), preferred_sessions (repeating) |
-| `strength_cross` | optional | strength_per_week, strength_days, strength_type, warmup_jog, cross_training{type,frequency} |
-| `preferences` | yes | calibrate_to (radio), build_mode (opt radio, default standard) |
-| `injuries` | optional | repeating: area, status, notes |
-| `health_screen` | yes | 8 PAR-Q booleans + other_reason (opt) |
-| `consent` | yes | disclaimer_accepted (req), health_acknowledged (conditional), terms_accepted (opt), accepted_at (system) |
-| `b_races` | optional | repeating (≤3): name, distance, date, target_time |
-| `other_events` | optional | repeating: name, distance, date |
-| `notes` | optional | other (textarea) |
-| `output` | yes | formats (checkboxes: spreadsheet/pdf), tracking (checkbox) |
+| Section           | Required? | Notes                                                                                                    |
+| ----------------- | --------- | -------------------------------------------------------------------------------------------------------- |
+| `meta`            | system    | `schema_version: "1"`, `submitted_at` (ISO 8601) set at handoff time — not a form field                  |
+| `units`           | yes       | radio km/mi; controls distance labels, does **not** convert values                                       |
+| `runner`          | optional  | name, age, sex, experience                                                                               |
+| `goal`            | yes       | race, distance, date, target_time, start_date                                                            |
+| `recent_result`   | yes       | distance, time, date                                                                                     |
+| `current_fitness` | yes       | weekly_distance, longest_run, recent_peak_weekly (opt)                                                   |
+| `weekly_schedule` | yes       | days_available, long_run_day, rest_days (multi), preferred_sessions (repeating)                          |
+| `strength_cross`  | optional  | strength_per_week, strength_days, strength_type, warmup_jog, cross_training{type,frequency}              |
+| `preferences`     | yes       | calibrate_to (radio), build_mode (opt radio, default standard)                                           |
+| `injuries`        | optional  | repeating: area, status, notes                                                                           |
+| `health_screen`   | yes       | 8 PAR-Q booleans + other_reason (opt)                                                                    |
+| `consent`         | yes       | disclaimer_accepted (req), health_acknowledged (conditional), terms_accepted (opt), accepted_at (system) |
+| `b_races`         | optional  | repeating (≤3): name, distance, date, target_time                                                        |
+| `other_events`    | optional  | repeating: name, distance, date                                                                          |
+| `notes`           | optional  | other (textarea)                                                                                         |
+| `output`          | yes       | formats (checkboxes: spreadsheet/pdf), tracking (checkbox)                                               |
 
 `progress` exists in the schema for phase-3 re-planning and is **not** collected
 by this form.
