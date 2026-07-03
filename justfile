@@ -26,5 +26,5 @@ serve:
 test:
     uv run pytest
 
-# Run all tests.
-check: test
+# Run all checks (lint + test).
+check: lint test

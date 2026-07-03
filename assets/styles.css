@@ -1,0 +1,7 @@
+/* Styling pass tracked as T7; this is a placeholder so the page isn't unstyled HTML. */
+body {
+  font-family: system-ui, sans-serif;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 1rem;
+}

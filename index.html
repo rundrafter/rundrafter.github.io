@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RunDrafter intake</title>
+    <link rel="stylesheet" href="assets/styles.css" />
+  </head>
+  <body>
+    <main>
+      <h1>RunDrafter intake</h1>
+      <form id="intake-form" novalidate>
+        <section aria-labelledby="units-heading">
+          <h2 id="units-heading">Units</h2>
+          <label><input type="radio" name="units" value="km" checked /> Kilometres</label>
+          <label><input type="radio" name="units" value="mi" /> Miles</label>
+        </section>
+
+        <section aria-labelledby="goal-heading">
+          <h2 id="goal-heading">Goal</h2>
+          <label for="goal-race">Race</label>
+          <input id="goal-race" name="goal.race" type="text" required />
+
+          <label for="goal-distance">Distance</label>
+          <select id="goal-distance" name="goal.distance" required>
+            <option value="5k">5 km</option>
+            <option value="10k">10 km</option>
+            <option value="half">Half marathon</option>
+            <option value="marathon">Marathon</option>
+          </select>
+
+          <label for="goal-date">Race date</label>
+          <input id="goal-date" name="goal.date" type="date" required />
+
+          <label for="goal-target-time">Target time (H:MM:SS, or "finish")</label>
+          <input id="goal-target-time" name="goal.target_time" type="text" required />
+
+          <label for="goal-start-date">Plan start date</label>
+          <input id="goal-start-date" name="goal.start_date" type="date" required />
+        </section>
+
+        <section aria-labelledby="recent-result-heading">
+          <h2 id="recent-result-heading">Recent result</h2>
+          <label for="recent-result-distance">Distance</label>
+          <select id="recent-result-distance" name="recent_result.distance" required>
+            <option value="parkrun">parkrun (5 km)</option>
+            <option value="5k">5 km race</option>
+            <option value="10k">10 km race</option>
+            <option value="half">Half marathon</option>
+            <option value="marathon">Marathon</option>
+          </select>
+
+          <label for="recent-result-time">Time (M:SS or H:MM:SS)</label>
+          <input id="recent-result-time" name="recent_result.time" type="text" required />
+
+          <label for="recent-result-date">Date</label>
+          <input id="recent-result-date" name="recent_result.date" type="date" required />
+        </section>
+
+        <section aria-labelledby="fitness-heading">
+          <h2 id="fitness-heading">Current fitness</h2>
+          <label for="fitness-weekly-distance">Typical weekly distance</label>
+          <input
+            id="fitness-weekly-distance"
+            name="current_fitness.weekly_distance"
+            type="number"
+            min="0"
+            step="any"
+            required
+          />
+
+          <label for="fitness-longest-run">Longest run (last 4-6 weeks)</label>
+          <input
+            id="fitness-longest-run"
+            name="current_fitness.longest_run"
+            type="number"
+            min="0"
+            step="any"
+            required
+          />
+        </section>
+
+        <section aria-labelledby="schedule-heading">
+          <h2 id="schedule-heading">Weekly schedule</h2>
+          <label for="schedule-days-available">Days available per week</label>
+          <input
+            id="schedule-days-available"
+            name="weekly_schedule.days_available"
+            type="number"
+            min="1"
+            max="7"
+            required
+          />
+
+          <label for="schedule-long-run-day">Long run day</label>
+          <select id="schedule-long-run-day" name="weekly_schedule.long_run_day" required>
+            <option value="Monday">Monday</option>
+            <option value="Tuesday">Tuesday</option>
+            <option value="Wednesday">Wednesday</option>
+            <option value="Thursday">Thursday</option>
+            <option value="Friday">Friday</option>
+            <option value="Saturday">Saturday</option>
+            <option value="Sunday">Sunday</option>
+          </select>
+
+          <fieldset>
+            <legend>Rest days</legend>
+            <label><input type="checkbox" name="weekly_schedule.rest_days" value="Monday" /> Monday</label>
+            <label><input type="checkbox" name="weekly_schedule.rest_days" value="Tuesday" /> Tuesday</label>
+            <label><input type="checkbox" name="weekly_schedule.rest_days" value="Wednesday" /> Wednesday</label>
+            <label><input type="checkbox" name="weekly_schedule.rest_days" value="Thursday" /> Thursday</label>
+            <label><input type="checkbox" name="weekly_schedule.rest_days" value="Friday" /> Friday</label>
+            <label><input type="checkbox" name="weekly_schedule.rest_days" value="Saturday" /> Saturday</label>
+            <label><input type="checkbox" name="weekly_schedule.rest_days" value="Sunday" /> Sunday</label>
+          </fieldset>
+        </section>
+
+        <section aria-labelledby="preferences-heading">
+          <h2 id="preferences-heading">Preferences</h2>
+          <fieldset>
+            <legend>Calibrate training paces to</legend>
+            <label>
+              <input type="radio" name="preferences.calibrate_to" value="current" checked />
+              Current fitness
+            </label>
+            <label>
+              <input type="radio" name="preferences.calibrate_to" value="goal" />
+              Goal pace
+            </label>
+          </fieldset>
+        </section>
+
+        <section aria-labelledby="health-heading">
+          <h2 id="health-heading">Health screen</h2>
+          <p>
+            Answer honestly - these questions flag when medical clearance is a
+            good idea before starting a training programme.
+          </p>
+          <label>
+            <input type="checkbox" name="health_screen.heart_condition" />
+            Have you ever been told you have a heart condition or had a stroke?
+          </label>
+          <label>
+            <input type="checkbox" name="health_screen.chest_pain_activity" />
+            Do you experience chest pain or pressure during physical activity?
+          </label>
+          <label>
+            <input type="checkbox" name="health_screen.chest_pain_rest" />
+            Have you had chest pain or pressure at rest in the last month?
+          </label>
+          <label>
+            <input type="checkbox" name="health_screen.dizziness_balance" />
+            Do you lose balance from dizziness, or lose consciousness?
+          </label>
+          <label>
+            <input type="checkbox" name="health_screen.bone_joint_problem" />
+            Do you have a bone, joint, or soft-tissue problem that is made
+            worse by physical activity?
+          </label>
+          <label>
+            <input type="checkbox" name="health_screen.bp_or_heart_meds" />
+            Are you currently taking medication for blood pressure or a heart
+            condition?
+          </label>
+          <label>
+            <input type="checkbox" name="health_screen.pregnancy" />
+            Are you pregnant or have you given birth in the last 3 months?
+          </label>
+          <label>
+            <input type="checkbox" name="health_screen.recent_surgery_illness" />
+            Have you had surgery or a serious illness in the last 3 months?
+          </label>
+        </section>
+
+        <section aria-labelledby="consent-heading">
+          <h2 id="consent-heading">Consent</h2>
+          <label>
+            <input type="checkbox" name="consent.disclaimer_accepted" required />
+            I have read and accept the disclaimer: this is training guidance,
+            not medical advice. See a professional for pain or injury.
+          </label>
+        </section>
+
+        <section aria-labelledby="output-heading">
+          <h2 id="output-heading">Output</h2>
+          <fieldset>
+            <legend>Formats</legend>
+            <label>
+              <input type="checkbox" name="output.formats" value="spreadsheet" />
+              Spreadsheet (editable, with tracking)
+            </label>
+            <label>
+              <input type="checkbox" name="output.formats" value="pdf" />
+              PDF (reference copy)
+            </label>
+          </fieldset>
+          <label>
+            <input type="checkbox" name="output.tracking" />
+            Include an Actual column for logging completed distances against
+            planned ones
+          </label>
+        </section>
+
+        <div id="form-errors" role="alert" aria-live="polite"></div>
+
+        <button type="submit">Download intake.json</button>
+      </form>
+    </main>
+
+    <script src="assets/ajv.bundle.js"></script>
+    <script type="module" src="assets/form.js"></script>
+  </body>
+</html>
