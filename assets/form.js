@@ -59,11 +59,20 @@ export function gatherFormState(form) {
   return state;
 }
 
-function setupRepeatingGroup(listId, templateId, addButtonId, onRowAdded) {
+function setupRepeatingGroup(
+  listId,
+  templateId,
+  addButtonId,
+  { onRowAdded, maxRows } = {},
+) {
   const list = document.getElementById(listId);
   const template = document.getElementById(templateId);
   const addButton = document.getElementById(addButtonId);
   if (!list || !template || !addButton) return;
+
+  function updateAddButton() {
+    addButton.disabled = maxRows != null && list.children.length >= maxRows;
+  }
 
   function reindex() {
     Array.from(list.children).forEach((row, index) => {
@@ -83,12 +92,15 @@ function setupRepeatingGroup(listId, templateId, addButtonId, onRowAdded) {
     row.querySelector("[data-remove-row]").addEventListener("click", () => {
       row.remove();
       reindex();
+      updateAddButton();
     });
     list.appendChild(row);
     onRowAdded?.(row);
+    updateAddButton();
   }
 
   addButton.addEventListener("click", addRow);
+  updateAddButton();
 }
 
 function setupUnitLabels(form) {
@@ -156,6 +168,15 @@ if (form) {
     "preferred-sessions-list",
     "preferred-session-template",
     "add-preferred-session",
-    () => updateUnitLabels(),
+    { onRowAdded: () => updateUnitLabels() },
+  );
+  setupRepeatingGroup("injuries-list", "injury-template", "add-injury");
+  setupRepeatingGroup("b-races-list", "b-race-template", "add-b-race", {
+    maxRows: 3,
+  });
+  setupRepeatingGroup(
+    "other-events-list",
+    "other-event-template",
+    "add-other-event",
   );
 }
