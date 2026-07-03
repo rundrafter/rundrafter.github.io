@@ -7,8 +7,12 @@ The form ships as plain, hand-authored static files — `index.html`,
 openable from `file://`. There is no bundler, transpiler, or framework in the
 path that produces what the browser loads.
 
-Node is permitted only in *dev/CI tooling* — the contract-sync script and the
-assembler tests — and never in the shipped artifact.
+**No node or npm anywhere in this repo, including dev/CI.** All tooling —
+contract sync, the vendored Ajv bundle, and the test suite — is Python. Tests
+that need to execute the shipped JS run it inside a real browser driven by
+Playwright's Python bindings (`pip`-installed; it manages its own browser
+binaries directly, not through npm), rather than by installing a node
+runtime to run the JS in isolation.
 
 ## Reason
 
@@ -25,19 +29,29 @@ GitHub Pages, and read without a build graph in the way. Alternatives rejected:
 - **A small bundler step (esbuild/rollup) with vanilla source:** still a
   build in the ship path, for a page whose assets are already small and
   hand-maintainable.
-
-The one concession is node in dev/CI: the assembler is validated with the same
-Ajv + schema the browser runs (see ADR 002), which needs a JS runtime in tests.
-This ships nothing.
+- **Node in dev/CI only, for a node-based assembler unit test
+  (`assemble.test.mjs` + node's Ajv):** the earlier version of this decision.
+  Rejected because it still means two package ecosystems and toolchains for a
+  project whose every other tool is Python (`uv`, `pytest`, `jsonschema`) —
+  a second lockfile, a second `npm ci` in CI, for a test tier that Playwright
+  covers anyway. Since the browser is already the source of truth for what
+  ships, driving it directly (Playwright) tests the real code path instead of
+  a node stand-in for it.
 
 ## Consequences
 
 - Repeating sections and conditional logic are more verbose in vanilla JS than
   in a framework; `assemble.js` is kept a pure, import-clean module so the
-  verbosity stays testable and out of the DOM code.
+  verbosity stays testable and out of the DOM code, even though it's tested
+  through a browser rather than in isolation.
 - No dependency resolution or lockfile for the runtime; the one vendored runtime
-  dependency (Ajv) is committed as a pinned browser bundle, updated by hand.
+  dependency (Ajv) is committed as a pinned browser bundle, fetched by URL and
+  updated by hand — never `npm`-built.
 - Deploy is "copy the files" — no build artifact, no CI build step to ship.
+- Browser-driven tests (Playwright) are heavier and slower per test than a
+  pure-function unit test would have been; that cost is accepted for staying
+  single-toolchain and for testing the actual shipped DOM/Ajv/handoff wiring
+  rather than `assemble.js` in isolation.
 - If the form later outgrows vanilla (many more sections, shared components),
   revisiting this is a real rewrite, not an incremental change; that trade was
   accepted for phase-2 simplicity.

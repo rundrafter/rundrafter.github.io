@@ -38,7 +38,7 @@ Non-obvious decisions made up front. Each is recorded as an ADR in
 one-liners below are the decision the rest of this spec builds on.
 
 1. **Vanilla runtime, no build step** — plain hand-authored HTML/CSS/JS served
-   as-is; node only in dev/CI tooling, never in the shipped page.
+   as-is, no bundler or framework in the shipped page.
    ([ADR 001](../decisions/001-vanilla-no-build-step.md))
 2. **Validate against the real schema, client-side, before handoff** — vendored
    schema + Ajv in the browser; an invalid object blocks the download.
@@ -50,9 +50,10 @@ one-liners below are the decision the rest of this spec builds on.
    (e.g. `run-drafter`), not a project-path or custom-domain site.
    ([ADR 004](../decisions/004-org-pages-root-hosting.md))
 
-**Flag carried from ADR 001:** node-in-CI for tests is the one place the
-runtime's no-toolchain rule admits tooling (see "Testing"). If even that is
-unwanted, say so and we lean on upstream schema tests + manual QA instead.
+5. **No node or npm anywhere in this repo, including dev/CI** — all tooling is
+   Python; tests that exercise the shipped JS do so by driving a real browser
+   with Playwright's Python bindings, not by running the JS under node.
+   ([ADR 001](../decisions/001-vanilla-no-build-step.md))
 
 ---
 
@@ -122,7 +123,8 @@ assets/
   handoff.js                # build the intake.json File; download + compose the
                             #   prefilled mailto (recipient/subject/body)
   schema.js                 # vendored schema as an ES module (works from file://)
-  ajv.bundle.js             # vendored Ajv standalone browser build (pinned)
+  ajv.bundle.js             # vendored Ajv standalone browser build (pinned,
+                            #   fetched by URL and committed by hand)
 schema/
   intake-schema.json        # vendored mirror (source for schema.js + tests)
   intake-example.json       # vendored golden example
@@ -131,16 +133,18 @@ scripts/
   sync_contract.py          # copy schema+example from upstream; regen schema.js
 tests/
   fixtures/                 # form-state fixtures + expected intake objects
-  assemble.test.mjs         # node+Ajv: assembler output validates vs schema
+  test_assemble.py          # pytest+Playwright: drives index.html in a real
+                            #   browser, feeds form-state, asserts the
+                            #   assembled/downloaded object validates vs schema
 .github/workflows/ci.yml    # run tests + contract drift check
 justfile                    # + sync-contract, serve, test targets
 ```
 
 **Keep `assemble.js` a pure, import-clean module** (no DOM, no side effects):
 input a plain form-state object, return `{ intake, errors }`. That is what makes
-it unit-testable in node with the same Ajv + schema the browser uses — highest
-fidelity. `form.js` owns DOM/browser concerns; `handoff.js` owns the
-file/download/mailto concerns.
+it easy to drive directly from a Playwright test with the same Ajv + schema the
+browser uses — highest fidelity. `form.js` owns DOM/browser concerns;
+`handoff.js` owns the file/download/mailto concerns.
 
 ### Contract sync mechanism
 
@@ -183,23 +187,31 @@ Ajv errors and cross-field errors render inline against their fields.
 
 ## Testing
 
-Runtime is zero-toolchain; **tests may use node in dev/CI** (it ships nothing).
-Chosen because a node test can import `assemble.js` and validate its output with
-the *same* Ajv + vendored schema the browser uses — no second validator to keep
-honest. `handoff.js`'s download/mailto is browser-only and is covered by manual
-QA (and the optional Playwright smoke test), not node.
+Runtime is zero-toolchain and so is the test toolchain: **no node or npm,
+anywhere** (see ADR 001). Tests run under `pytest`, driving a real browser via
+Playwright's Python bindings (`pip`-installed dev dependency; `playwright
+install` fetches browser binaries directly, no npm involved). A test loads
+`index.html` from disk, sets form state (either through the DOM or by calling
+`assemble.js` in-page via Playwright's `page.evaluate`), and asserts on the
+result — so the *same* `assemble.js` + vendored Ajv + schema the browser ships
+is what's under test, not a second runtime's copy of it. `handoff.js`'s
+download/mailto is covered the same way (Playwright can intercept downloads
+and `mailto:` navigation).
 
-- **Assembler unit tests** (`tests/assemble.test.mjs`): feed form-state fixtures,
-  assert the assembled object validates against the vendored schema, and assert
+- **Assembler tests** (`tests/test_assemble.py`): feed form-state fixtures into
+  `assemble.js` in-page, assert the assembled object validates against the
+  vendored schema (via Python's `jsonschema`, already a dependency), and assert
   each cross-field rule (pruning, health gate, date ordering, ≥1 format) fires.
 - **Golden reproduction:** a fixture reproduces `schema/intake-example.json`'s
   structure from a plausible form-state, proving the form can emit the reference
   shape.
 - **Contract drift check** (CI): committed `schema/*` matches a fresh sync.
-- **Deferred / optional:** one Playwright smoke test (fill DOM → download →
-  validate) once the form stabilises. Not in the walking skeleton.
+- **DOM smoke test:** fill the real form fields → download → validate, folded
+  into the same Playwright suite rather than deferred as a separate optional
+  tier, since the browser-driven approach is now the only test tier there is.
 
-Run the narrow test while iterating; widen to the full file before done.
+Run the narrowest relevant test while iterating; widen to the full file before
+done.
 
 ---
 
@@ -225,8 +237,9 @@ thin path running end to end, then layer.
 - **T4 — Cross-field + conditional logic.** health-screen→consent gate, date
   ordering, disclaimer gate, ≥1 output format, timestamps at handoff.
   *DoD:* each rule covered by a test.
-- **T5 — Test suite + fixtures.** `tests/assemble.test.mjs` + fixtures; CI runs
-  tests + drift check. *DoD:* `just test` and CI green.
+- **T5 — Test suite + fixtures.** `tests/test_assemble.py` (pytest + Playwright)
+  + fixtures; add Playwright as a `uv` dev dependency; CI runs tests + drift
+  check. *DoD:* `just test` and CI green, no node/npm anywhere.
 - **T6 — Email handoff + success screen.** `handoff.js`: download + prefilled
   mailto, composed subject/message, return address text, download-again link.
   *DoD:* a valid submission downloads the file and opens a correctly prefilled
@@ -258,7 +271,9 @@ These need you; the build tasks above don't block on them except T9.
    unaffected.)
 5. **Enable GitHub Pages** — Settings → Pages → source `main` / root — and
    confirm the live URL.
-6. **Confirm node-in-CI is acceptable** for tests (or veto it; see Testing).
+6. ~~Confirm node-in-CI is acceptable for tests (or veto it).~~ Resolved: no
+   node/npm anywhere; tests use Playwright's Python bindings instead (see
+   ADR 001).
 7. *(Optional, later)* register a custom domain if you outgrow the
    `github.io` URL.
 8. **CI contract-drift check needs a token.** `run-drafter` is private, so the

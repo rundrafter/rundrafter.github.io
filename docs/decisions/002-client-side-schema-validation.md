@@ -27,8 +27,9 @@ rejected:
 - **Hand-write a validator for this schema:** duplicates the contract in a
   second, drift-prone place; strictly worse than running the schema itself.
 
-Ajv is used both here and in the node assembler tests, so the same validator
-guards the browser and CI — one source of validation truth.
+Ajv is exercised directly by the Playwright-driven tests (see ADR 001) —
+the same vendored bundle validates in the browser and in CI, not a second
+copy running under a different JS runtime.
 
 ## Consequences
 
