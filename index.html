@@ -483,6 +483,20 @@
 
         <button type="submit">Download intake.json</button>
       </form>
+
+      <section id="success-screen" aria-labelledby="success-heading" hidden>
+        <h2 id="success-heading">intake.json downloaded</h2>
+        <p>
+          Attach the downloaded <code>intake.json</code> to an email and send
+          it in to continue.
+        </p>
+        <a id="email-it-in" href="#">Email it in</a>
+        <p>
+          Return address:
+          <span id="return-email"></span>
+        </p>
+        <button type="button" id="download-again">Download again</button>
+      </section>
     </main>
 
     <script src="assets/ajv.bundle.js"></script>
