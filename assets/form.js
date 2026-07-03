@@ -6,8 +6,10 @@ function setPath(obj, path, value) {
   const parts = path.split(".");
   let cur = obj;
   for (let i = 0; i < parts.length - 1; i++) {
-    cur[parts[i]] ??= {};
-    cur = cur[parts[i]];
+    const part = parts[i];
+    const nextIsIndex = /^\d+$/.test(parts[i + 1]);
+    cur[part] ??= nextIsIndex ? [] : {};
+    cur = cur[part];
   }
   cur[parts[parts.length - 1]] = value;
 }
@@ -57,6 +59,52 @@ export function gatherFormState(form) {
   return state;
 }
 
+function setupRepeatingGroup(listId, templateId, addButtonId) {
+  const list = document.getElementById(listId);
+  const template = document.getElementById(templateId);
+  const addButton = document.getElementById(addButtonId);
+  if (!list || !template || !addButton) return;
+
+  function reindex() {
+    Array.from(list.children).forEach((row, index) => {
+      row.querySelectorAll("[name]").forEach((el) => {
+        el.name = el.name.replace(/\.\d+\./, `.${index}.`);
+      });
+    });
+  }
+
+  function addRow() {
+    const index = list.children.length;
+    const fragment = template.content.cloneNode(true);
+    fragment.querySelectorAll("[name]").forEach((el) => {
+      el.name = el.name.replace("__INDEX__", index);
+    });
+    const row = fragment.firstElementChild;
+    row.querySelector("[data-remove-row]").addEventListener("click", () => {
+      row.remove();
+      reindex();
+    });
+    list.appendChild(row);
+  }
+
+  addButton.addEventListener("click", addRow);
+}
+
+function setupUnitLabels(form) {
+  const labels = form.querySelectorAll("[data-unit-label]");
+  function update() {
+    const checked = form.querySelector('input[name="units"]:checked');
+    const unit = checked ? checked.value : "km";
+    labels.forEach((el) => {
+      el.textContent = unit;
+    });
+  }
+  form.querySelectorAll('input[name="units"]').forEach((el) => {
+    el.addEventListener("change", update);
+  });
+  update();
+}
+
 function renderErrors(container, messages) {
   container.innerHTML = "";
   if (messages.length === 0) return;
@@ -102,4 +150,10 @@ function handleSubmit(event) {
 const form = document.getElementById("intake-form");
 if (form) {
   form.addEventListener("submit", handleSubmit);
+  setupUnitLabels(form);
+  setupRepeatingGroup(
+    "preferred-sessions-list",
+    "preferred-session-template",
+    "add-preferred-session",
+  );
 }
