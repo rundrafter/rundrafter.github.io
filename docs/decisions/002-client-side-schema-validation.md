@@ -1,0 +1,45 @@
+# 002 - Validate against the real schema, client-side, before handoff
+
+## Decision
+
+Before the form hands off an `intake.json`, it validates the assembled object
+against the authoritative JSON Schema in the browser. A vendored copy of
+`intake-schema.json` is compiled by [Ajv](https://ajv.js.org/) (committed as a
+pinned standalone browser bundle) and run at submit time; an object that fails
+validation shows errors inline and blocks the download.
+
+The schema is vendored, never forked: `scripts/sync-contract.sh` copies it from
+`run-drafter` and CI fails on drift (see the spec's "Contract sync mechanism").
+
+## Reason
+
+The form's entire reason to exist is to let a non-developer produce a *valid*
+intake instead of hand-authoring JSON. Checking the output against the real
+schema — the same one the pipeline validates against — is the strongest
+guarantee it can offer, and it catches both runner mistakes the form's own
+fields miss and any drift between the form and the contract. Alternatives
+rejected:
+
+- **Form-level validation only (HTML5 constraints + ad-hoc JS):** lighter, no
+  vendored validator, but it re-encodes the contract informally in field rules.
+  A logic gap or a schema change the form didn't track would let an invalid file
+  reach the pipeline — the exact failure this project is meant to prevent.
+- **Hand-write a validator for this schema:** duplicates the contract in a
+  second, drift-prone place; strictly worse than running the schema itself.
+
+Ajv is used both here and in the node assembler tests, so the same validator
+guards the browser and CI — one source of validation truth.
+
+## Consequences
+
+- Ajv (~one vendored JS bundle) is a committed runtime dependency, pinned and
+  updated by hand; it is the only third-party code the page loads.
+- The vendored schema is inlined as `assets/schema.js` (an ES-module export) so
+  validation needs no `fetch` and works from `file://`.
+- Validation is only as current as the last `sync-contract` run; the CI drift
+  check is what keeps "vendored" from meaning "stale".
+- Cross-field product rules the schema can't express (date ordering, the
+  health-screen consent gate, non-empty output formats) are enforced separately
+  in `assemble.js` — schema validation is necessary, not sufficient.
+
+Status: Accepted.

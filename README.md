@@ -26,4 +26,5 @@ contract here.
 
 ## Status
 
-Not yet started - repo scaffolding only.
+Spec written, implementation not started. The build plan, decisions, and
+progress checklist live in [`docs/spec/webform.md`](docs/spec/webform.md).
