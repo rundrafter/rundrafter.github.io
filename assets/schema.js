@@ -114,7 +114,6 @@ export default {
         "distance": {
           "type": "string",
           "enum": [
-            "parkrun",
             "5k",
             "10k",
             "half",
@@ -204,6 +203,14 @@ export default {
               "description"
             ],
             "additionalProperties": false,
+            "dependentRequired": {
+              "distance": [
+                "effort"
+              ],
+              "effort": [
+                "distance"
+              ]
+            },
             "properties": {
               "day": {
                 "type": "string",
@@ -219,6 +226,17 @@ export default {
               },
               "description": {
                 "type": "string"
+              },
+              "distance": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "effort": {
+                "type": "string",
+                "enum": [
+                  "easy",
+                  "threshold"
+                ]
               }
             }
           }

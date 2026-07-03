@@ -43,7 +43,6 @@
           <h2 id="recent-result-heading">Recent result</h2>
           <label for="recent-result-distance">Distance</label>
           <select id="recent-result-distance" name="recent_result.distance" required>
-            <option value="parkrun">parkrun (5 km)</option>
             <option value="5k">5 km race</option>
             <option value="10k">10 km race</option>
             <option value="half">Half marathon</option>
@@ -122,7 +121,10 @@
             <legend>Preferred sessions</legend>
             <p>
               Recurring running sessions the plan should schedule around, e.g.
-              a weekly parkrun or a club run.
+              a weekly parkrun or a club run. Fill in both distance and effort
+              to make an entry an anchor session - a fixed-distance,
+              fixed-effort commitment the plan eases off before races, late
+              in the taper, or under injury caution.
             </p>
             <div id="preferred-sessions-list"></div>
             <button type="button" id="add-preferred-session">Add preferred session</button>
@@ -149,10 +151,31 @@
               <input
                 type="text"
                 name="weekly_schedule.preferred_sessions.__INDEX__.description"
-                placeholder="e.g. parkrun"
+                placeholder="e.g. club run"
                 required
               />
             </label>
+            <label>
+              Distance (<span data-unit-label>km</span>, optional)
+              <input
+                type="number"
+                name="weekly_schedule.preferred_sessions.__INDEX__.distance"
+                min="0"
+                step="any"
+              />
+            </label>
+            <label>
+              Effort (optional)
+              <select name="weekly_schedule.preferred_sessions.__INDEX__.effort">
+                <option value=""></option>
+                <option value="easy">Easy</option>
+                <option value="threshold">Threshold</option>
+              </select>
+            </label>
+            <p class="help-text">
+              Fill in both distance and effort to turn this into a scheduled
+              anchor session.
+            </p>
             <button type="button" data-remove-row>Remove</button>
           </fieldset>
         </template>

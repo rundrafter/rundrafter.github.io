@@ -59,7 +59,7 @@ export function gatherFormState(form) {
   return state;
 }
 
-function setupRepeatingGroup(listId, templateId, addButtonId) {
+function setupRepeatingGroup(listId, templateId, addButtonId, onRowAdded) {
   const list = document.getElementById(listId);
   const template = document.getElementById(templateId);
   const addButton = document.getElementById(addButtonId);
@@ -85,17 +85,17 @@ function setupRepeatingGroup(listId, templateId, addButtonId) {
       reindex();
     });
     list.appendChild(row);
+    onRowAdded?.(row);
   }
 
   addButton.addEventListener("click", addRow);
 }
 
 function setupUnitLabels(form) {
-  const labels = form.querySelectorAll("[data-unit-label]");
   function update() {
     const checked = form.querySelector('input[name="units"]:checked');
     const unit = checked ? checked.value : "km";
-    labels.forEach((el) => {
+    form.querySelectorAll("[data-unit-label]").forEach((el) => {
       el.textContent = unit;
     });
   }
@@ -103,6 +103,7 @@ function setupUnitLabels(form) {
     el.addEventListener("change", update);
   });
   update();
+  return update;
 }
 
 function renderErrors(container, messages) {
@@ -150,10 +151,11 @@ function handleSubmit(event) {
 const form = document.getElementById("intake-form");
 if (form) {
   form.addEventListener("submit", handleSubmit);
-  setupUnitLabels(form);
+  const updateUnitLabels = setupUnitLabels(form);
   setupRepeatingGroup(
     "preferred-sessions-list",
     "preferred-session-template",
     "add-preferred-session",
+    () => updateUnitLabels(),
   );
 }

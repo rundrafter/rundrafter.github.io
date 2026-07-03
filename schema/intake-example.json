@@ -33,7 +33,7 @@
     "rest_days": ["Monday", "Friday"],
     "preferred_sessions": [
       {"day": "Tuesday", "description": "intervals with running club"},
-      {"day": "Saturday", "description": "parkrun"}
+      {"day": "Saturday", "description": "parkrun", "distance": 5, "effort": "threshold"}
     ]
   },
   "strength_cross": {

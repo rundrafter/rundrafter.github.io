@@ -8,6 +8,14 @@ function omitEmpty(obj) {
   return result;
 }
 
+function omitEmptyPreferredSessions(weeklySchedule) {
+  if (!Array.isArray(weeklySchedule.preferred_sessions)) return weeklySchedule;
+  return {
+    ...weeklySchedule,
+    preferred_sessions: weeklySchedule.preferred_sessions.map(omitEmpty),
+  };
+}
+
 export function assemble(formState, { now } = {}) {
   const timestamp = now ?? new Date().toISOString();
   const errors = [];
@@ -18,7 +26,9 @@ export function assemble(formState, { now } = {}) {
     goal: omitEmpty(formState.goal ?? {}),
     recent_result: omitEmpty(formState.recent_result ?? {}),
     current_fitness: omitEmpty(formState.current_fitness ?? {}),
-    weekly_schedule: omitEmpty(formState.weekly_schedule ?? {}),
+    weekly_schedule: omitEmptyPreferredSessions(
+      omitEmpty(formState.weekly_schedule ?? {}),
+    ),
     preferences: omitEmpty(formState.preferences ?? {}),
     health_screen: omitEmpty(formState.health_screen ?? {}),
     consent: omitEmpty({
