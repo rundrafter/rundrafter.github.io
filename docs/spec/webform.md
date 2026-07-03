@@ -128,7 +128,7 @@ schema/
   intake-example.json       # vendored golden example
   SOURCE.md                 # upstream path + pinned run-drafter revision
 scripts/
-  sync-contract.sh          # copy schema+example from upstream; regen schema.js
+  sync_contract.py          # copy schema+example from upstream; regen schema.js
 tests/
   fixtures/                 # form-state fixtures + expected intake objects
   assemble.test.mjs         # node+Ajv: assembler output validates vs schema
@@ -144,15 +144,18 @@ file/download/mailto concerns.
 
 ### Contract sync mechanism
 
-`scripts/sync-contract.sh` is the only thing that writes `schema/*` and
-`assets/schema.js`, so drift is a one-command fix:
+`scripts/sync_contract.py` is the only thing that writes `schema/*` and
+`assets/schema.js`, so drift is a one-command fix. Run via `uv run python
+scripts/sync_contract.py` (see `.fieldkit/conventions/python/run.md`) — this is
+dev/CI tooling only, per ADR 001; nothing it produces ships an interpreter or a
+build step, only static JSON/JS files:
 
 1. Copy `intake-schema.json` and `intake-example.json` from the upstream source
    — locally from the sibling checkout (`../run-drafter/docs/`), or in CI from
    GitHub raw at the pinned revision in `schema/SOURCE.md`.
 2. Regenerate `assets/schema.js` by wrapping the JSON as
-   `export default <json>;` (pure shell — no node). Inlining as a module means
-   the page needs no `fetch`, so validation works from `file://` too.
+   `export default <json>;`. Inlining as a module means the page needs no
+   `fetch`, so validation works from `file://` too.
 3. Record the upstream commit SHA in `schema/SOURCE.md`.
 
 CI runs the sync into a temp dir and diffs against the committed copies; a
@@ -205,7 +208,7 @@ Run the narrow test while iterating; widen to the full file before done.
 Each task has a definition-of-done. Build order is not feature order: get one
 thin path running end to end, then layer.
 
-- **T0 — Tooling + vendored contract.** `scripts/sync-contract.sh`, `schema/*`,
+- **T0 — Tooling + vendored contract.** `scripts/sync_contract.py`, `schema/*`,
   `assets/schema.js`, justfile `sync-contract`/`serve`/`test` targets, CI
   skeleton. *DoD:* `just sync-contract` produces the vendored files; a stub test
   asserts the vendored example validates against the vendored schema (green).
