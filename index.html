@@ -59,7 +59,9 @@
 
         <section aria-labelledby="fitness-heading">
           <h2 id="fitness-heading">Current fitness</h2>
-          <label for="fitness-weekly-distance">Typical weekly distance</label>
+          <label for="fitness-weekly-distance">
+            Typical weekly distance (<span data-unit-label>km</span>)
+          </label>
           <input
             id="fitness-weekly-distance"
             name="current_fitness.weekly_distance"
@@ -69,7 +71,9 @@
             required
           />
 
-          <label for="fitness-longest-run">Longest run (last 4-6 weeks)</label>
+          <label for="fitness-longest-run">
+            Longest run in the last 4-6 weeks (<span data-unit-label>km</span>)
+          </label>
           <input
             id="fitness-longest-run"
             name="current_fitness.longest_run"
@@ -113,7 +117,45 @@
             <label><input type="checkbox" name="weekly_schedule.rest_days" value="Saturday" /> Saturday</label>
             <label><input type="checkbox" name="weekly_schedule.rest_days" value="Sunday" /> Sunday</label>
           </fieldset>
+
+          <fieldset>
+            <legend>Preferred sessions</legend>
+            <p>
+              Recurring running sessions the plan should schedule around, e.g.
+              a weekly parkrun or a club run.
+            </p>
+            <div id="preferred-sessions-list"></div>
+            <button type="button" id="add-preferred-session">Add preferred session</button>
+          </fieldset>
         </section>
+
+        <template id="preferred-session-template">
+          <fieldset class="repeating-row">
+            <legend>Preferred session</legend>
+            <label>
+              Day
+              <select name="weekly_schedule.preferred_sessions.__INDEX__.day" required>
+                <option value="Monday">Monday</option>
+                <option value="Tuesday">Tuesday</option>
+                <option value="Wednesday">Wednesday</option>
+                <option value="Thursday">Thursday</option>
+                <option value="Friday">Friday</option>
+                <option value="Saturday">Saturday</option>
+                <option value="Sunday">Sunday</option>
+              </select>
+            </label>
+            <label>
+              Description
+              <input
+                type="text"
+                name="weekly_schedule.preferred_sessions.__INDEX__.description"
+                placeholder="e.g. parkrun"
+                required
+              />
+            </label>
+            <button type="button" data-remove-row>Remove</button>
+          </fieldset>
+        </template>
 
         <section aria-labelledby="preferences-heading">
           <h2 id="preferences-heading">Preferences</h2>

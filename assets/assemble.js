@@ -2,6 +2,7 @@ function omitEmpty(obj) {
   const result = {};
   for (const [key, value] of Object.entries(obj)) {
     if (value === undefined || value === null || value === "") continue;
+    if (Array.isArray(value) && value.length === 0) continue;
     result[key] = value;
   }
   return result;
