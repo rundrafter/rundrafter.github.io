@@ -196,6 +196,18 @@ build step, only static JSON/JS files:
 CI runs the sync into a temp dir and diffs against the committed copies; a
 mismatch fails the build with "contract drift — run `just sync-contract`".
 
+`schema/SOURCE.md` also pins a separate `rules_revision`: the upstream hash
+of `validate.py` + `contracts.md` at the last cross-field parity review (see
+`pre-deploy-hardening.md` H5). These aren't vendored files, so
+`just check-contract` only compares hashes — against the sibling checkout,
+locally; it's a no-op without one — and reports "rules changed upstream
+since last parity sync" rather than diffing content. Re-pin after syncing
+`assemble.js` to a rule change with
+`uv run python scripts/sync_contract.py --update-rules-revision`.
+`tests/test_stage1_parity.py` is the executable half of the same guard: it
+pipes every intake this suite considers valid through the sibling's real
+`rundrafter validate` CLI (skipped without the sibling).
+
 ### Validation and handoff at runtime
 
 On submit, `form.js` gathers form-state → `assemble.js` returns
@@ -245,6 +257,12 @@ and `mailto:` navigation).
 - **DOM smoke test:** fill the real form fields → download → validate, folded
   into the same Playwright suite rather than deferred as a separate optional
   tier, since the browser-driven approach is now the only test tier there is.
+- **Stage-1 parity** (`tests/test_stage1_parity.py`, local only): pipes the
+  fixtures' assembled intakes and the DOM smoke test's downloaded intake
+  through the sibling checkout's real `rundrafter validate` CLI, so a
+  cross-field rule this suite considers passing is checked against upstream's
+  actual implementation, not just this repo's re-implementation of it.
+  Skipped without a `../run-drafter` checkout.
 
 Run the narrowest relevant test while iterating; widen to the full file before
 done.

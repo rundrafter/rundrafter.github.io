@@ -19,6 +19,12 @@ UPSTREAM_RAW_BASE = "https://raw.githubusercontent.com/eirkkr/run-drafter"
 
 CONTRACT_FILES = ("intake-schema.json", "intake-example.json")
 
+# Not vendored (they're a private repo's internals, reflected here only as
+# client-side JS in assets/assemble.js) - just hash-pinned, so a rule change
+# upstream shows up as drift instead of silently diverging. See H5 in
+# docs/spec/pre-deploy-hardening.md.
+RULES_FILES = ("src/rundrafter/validate.py", "docs/spec/contracts.md")
+
 SOURCE_MD_TEMPLATE = """# Contract source
 
 Vendored from the upstream `run-drafter` repo's intake contract:
@@ -31,19 +37,38 @@ Pinned upstream revision:
 revision: {revision}
 
 Re-sync with `just sync-contract` (`uv run python scripts/sync_contract.py`).
+
+## Cross-field rule parity
+
+The cross-field rules in `assets/assemble.js` mirror upstream
+`src/rundrafter/validate.py` (constraints documented in
+`docs/spec/contracts.md`). These aren't vendored - only their upstream
+revision is pinned, checked by `just check-contract` against the sibling
+checkout.
+
+rules_revision: {rules_revision}
+
+After syncing assemble.js (and webform.md) to a rule change upstream, run
+`uv run python scripts/sync_contract.py --update-rules-revision` (sibling
+checkout required) to record the new pin.
 """
 
 
 def main() -> int:
-    """Sync the vendored contract, or check it for drift.
+    """Sync the vendored contract, check it for drift, or re-pin the rules
+    revision after a manual parity review.
 
     Returns:
         Process exit code: 0 on success, 1 on drift (--check only).
     """
     args = _parse_args()
+    if args.update_rules_revision:
+        _update_rules_revision()
+        return 0
+
     if not args.check:
         _sync(SCHEMA_DIR, ASSETS_DIR)
-        print(f"synced contract from revision {_read_pinned_revision(SCHEMA_DIR)}")
+        print(f"synced contract from revision {_read_pinned(SCHEMA_DIR, 'revision')}")
         return 0
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -61,15 +86,42 @@ def _parse_args() -> argparse.Namespace:
         help="sync into a temp dir and diff against the committed copies; "
         "don't write anything (used by CI to detect contract drift)",
     )
+    parser.add_argument(
+        "--update-rules-revision",
+        action="store_true",
+        help="record the sibling checkout's current revision of "
+        "validate.py + contracts.md as the new parity pin, once "
+        "assemble.js has been synced to match a rule change upstream",
+    )
     return parser.parse_args()
 
 
 def _sync(schema_dir: Path, assets_dir: Path) -> None:
     schema_dir.mkdir(parents=True, exist_ok=True)
     assets_dir.mkdir(parents=True, exist_ok=True)
+    # A schema-only resync doesn't touch rule parity; carry the existing pin
+    # forward (or bootstrap it to the schema revision the first time).
     revision = _fetch_contract(schema_dir)
+    rules_revision = revision
+    if SOURCE_MD.is_file():
+        rules_revision = _read_pinned(SCHEMA_DIR, "rules_revision", default=revision)
     _write_schema_js(schema_dir, assets_dir)
-    (schema_dir / "SOURCE.md").write_text(SOURCE_MD_TEMPLATE.format(revision=revision))
+    (schema_dir / "SOURCE.md").write_text(
+        SOURCE_MD_TEMPLATE.format(revision=revision, rules_revision=rules_revision)
+    )
+
+
+def _update_rules_revision() -> None:
+    if not UPSTREAM_SIBLING.is_dir():
+        raise SystemExit(
+            "--update-rules-revision requires a ../run-drafter sibling checkout"
+        )
+    revision = _read_pinned(SCHEMA_DIR, "revision")
+    rules_revision = _current_rules_revision()
+    SOURCE_MD.write_text(
+        SOURCE_MD_TEMPLATE.format(revision=revision, rules_revision=rules_revision)
+    )
+    print(f"rules_revision pinned to {rules_revision}")
 
 
 def _fetch_contract(dest_dir: Path) -> str:
@@ -93,7 +145,7 @@ def _sync_from_sibling(dest_dir: Path) -> str:
 
 
 def _sync_from_github(dest_dir: Path) -> str:
-    revision = _read_pinned_revision(SCHEMA_DIR)
+    revision = _read_pinned(SCHEMA_DIR, "revision")
     for name in CONTRACT_FILES:
         url = f"{UPSTREAM_RAW_BASE}/{revision}/docs/{name}"
         with urllib.request.urlopen(url) as response:  # noqa: S310
@@ -101,12 +153,26 @@ def _sync_from_github(dest_dir: Path) -> str:
     return revision
 
 
-def _read_pinned_revision(schema_dir: Path) -> str:
+def _current_rules_revision() -> str:
+    """The sibling checkout's current git hash for the rule-source files."""
+    result = subprocess.run(
+        ["git", "log", "-1", "--format=%H", "--", *RULES_FILES],
+        cwd=UPSTREAM_SIBLING,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return result.stdout.strip()
+
+
+def _read_pinned(schema_dir: Path, label: str, default: str | None = None) -> str:
     source_md = schema_dir / "SOURCE.md"
     for line in source_md.read_text().splitlines():
-        if line.startswith("revision:"):
+        if line.startswith(f"{label}:"):
             return line.split(":", 1)[1].strip()
-    raise RuntimeError(f"no pinned revision found in {source_md}")
+    if default is not None:
+        return default
+    raise RuntimeError(f"no pinned {label} found in {source_md}")
 
 
 def _write_schema_js(schema_dir: Path, assets_dir: Path) -> None:
@@ -130,8 +196,37 @@ def _check_drift(tmp_schema_dir: Path, tmp_assets_dir: Path) -> int:
         print("contract drift detected in: " + ", ".join(stale), file=sys.stderr)
         print("run `just sync-contract`", file=sys.stderr)
         return 1
+
+    rules_drift = _check_rules_drift()
+    if rules_drift:
+        print(rules_drift, file=sys.stderr)
+        return 1
+
     print("contract is up to date")
     return 0
+
+
+def _check_rules_drift() -> str | None:
+    """Compare the pinned rules_revision against the sibling's current one.
+
+    Returns:
+        A message describing the drift, or ``None`` if there's no sibling to
+        check against (this repo can't reach the private upstream over
+        GitHub, so it's skipped rather than failed - see the H5 out-of-scope
+        note in docs/spec/pre-deploy-hardening.md) or nothing has drifted.
+    """
+    if not UPSTREAM_SIBLING.is_dir():
+        return None
+    pinned = _read_pinned(SCHEMA_DIR, "rules_revision")
+    current = _current_rules_revision()
+    if pinned == current:
+        return None
+    return (
+        f"rules changed upstream since last parity sync ({pinned} -> {current}): "
+        "diff validate.py/contracts.md against assets/assemble.js + "
+        "docs/spec/webform.md, run tests/test_stage1_parity.py, then "
+        "`uv run python scripts/sync_contract.py --update-rules-revision`"
+    )
 
 
 def _files_equal(a: Path, b: Path) -> bool:
