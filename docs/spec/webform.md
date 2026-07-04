@@ -25,9 +25,17 @@ contract:
   *shape*, and its values are the reference our fixtures reproduce.
 - `run-drafter/docs/intake.md` — field-by-field reference, including the
   intended form input type for every field. **Build the form from this doc.**
+- `run-drafter/docs/spec/contracts.md` — the `intake.json` contract table plus
+  the stage-1 tripwire note; authoritative for the cross-field *constraints*
+  (date ordering, event windows, schedule rules) the schema alone can't
+  express.
+- `run-drafter/src/rundrafter/validate.py` — stage 1's actual implementation of
+  those cross-field rules; authoritative for exact semantics (strict vs.
+  non-strict comparisons, error codes) whenever `contracts.md`'s prose is
+  ambiguous.
 
-If the form and the schema ever disagree, the schema wins and this spec is
-wrong — fix the spec.
+If the form ever disagrees with the schema or these cross-field rules,
+upstream wins and this spec is wrong — fix the spec.
 
 ---
 
@@ -88,7 +96,13 @@ by this form.
 ## Rules the schema can't express (enforce in JS)
 
 The schema validates types/enums/patterns. These product rules are enforced by
-the assembler/validator and block handoff with a clear message:
+the assembler/validator; `assemble()` returns `{ intake, errors, warnings }` —
+a non-empty `errors` blocks handoff with a clear message, `warnings` surface as
+a non-blocking notice. The rules mirror `run-drafter`'s stage 1
+(`validate.py` / `contracts.md`) rule-for-rule, so an intake this form accepts
+never bounces back from the pipeline.
+
+### Blocking (`errors`)
 
 - **Empty-object pruning.** Never emit an optional section as an empty or
   partial object. If the runner leaves `runner`, `strength_cross`,
@@ -99,13 +113,30 @@ the assembler/validator and block handoff with a clear message:
   the medical-clearance warning and require `consent.health_acknowledged === true`
   before handoff.
 - **Disclaimer gate.** `consent.disclaimer_accepted` must be `true` to hand off.
-- **Date ordering.** `goal.start_date ≤ goal.date`; every `b_races[].date` and
-  `other_events[].date` must be before `goal.date`.
+- **Date ordering** (mirrors `_validate_date_ordering`):
+  - `goal.start_date` strictly `<` `goal.date` (`DATE_ORDER_START_AFTER_GOAL`).
+  - `recent_result.date` `≤` `goal.start_date` (`DATE_ORDER_RESULT_AFTER_START`).
+  - Every `b_races[].date` and `other_events[].date` strictly between
+    `goal.start_date` and `goal.date` (`DATE_OUT_OF_WINDOW`).
+  - No two events, across `b_races` and `other_events` combined, share a date
+    (`DUPLICATE_EVENT_DATE`).
+- **Schedule** (mirrors `_validate_schedule`):
+  - `weekly_schedule.long_run_day` must not be in `rest_days`
+    (`LONG_RUN_DAY_IS_REST`).
+  - `weekly_schedule.days_available ≥ 3` (`DAYS_AVAILABLE_TOO_FEW`).
+  - No `preferred_sessions[].day` falls on a rest day
+    (`PREFERRED_SESSION_ON_REST_DAY`).
 - **At least one output format.** `output.formats` must be non-empty.
 - **Timestamps.** Set `meta.submitted_at` and `consent.accepted_at` (ISO 8601)
   at the moment of handoff, not earlier.
+
+### Non-blocking (`warnings`)
+
+- **Stale recent result.** `recent_result.date` more than 183 days before
+  `goal.start_date` (`RECENT_RESULT_OLD`) — VDOT-derived paces may not reflect
+  current fitness.
 - **Advisory consistency.** `strength_days` / `rest_days` / `days_available`
-  "should be consistent" — warn, don't block.
+  "should be consistent" — surface a notice, don't block.
 
 ---
 
@@ -118,7 +149,8 @@ assets/
   form.js                   # DOM wiring: render sections, repeating add/remove,
                             #   conditional consent, gather form-state
   assemble.js               # PURE ES module: formState -> intake object, with
-                            #   pruning + cross-field validation (returns errors)
+                            #   pruning + cross-field validation (returns
+                            #   errors + warnings)
   handoff.js                # build the intake.json File; download + compose the
                             #   prefilled mailto (recipient/subject/body)
   schema.js                 # vendored schema as an ES module (works from file://)
@@ -140,10 +172,10 @@ justfile                    # + sync-contract, serve, test targets
 ```
 
 **Keep `assemble.js` a pure, import-clean module** (no DOM, no side effects):
-input a plain form-state object, return `{ intake, errors }`. That is what makes
-it easy to drive directly from a Playwright test with the same Ajv + schema the
-browser uses — highest fidelity. `form.js` owns DOM/browser concerns;
-`handoff.js` owns the file/download/mailto concerns.
+input a plain form-state object, return `{ intake, errors, warnings }`. That is
+what makes it easy to drive directly from a Playwright test with the same Ajv
++ schema the browser uses — highest fidelity. `form.js` owns DOM/browser
+concerns; `handoff.js` owns the file/download/mailto concerns.
 
 ### Contract sync mechanism
 
@@ -167,9 +199,11 @@ mismatch fails the build with "contract drift — run `just sync-contract`".
 ### Validation and handoff at runtime
 
 On submit, `form.js` gathers form-state → `assemble.js` returns
-`{ intake, errors }` (cross-field errors) → if none, Ajv (from
-`ajv.bundle.js`) validates `intake` against `schema.js`. Only a clean pass
-enables handoff. `handoff.js` then, identically on every device:
+`{ intake, errors, warnings }` (cross-field errors + non-blocking advisories)
+→ if `errors` is empty, Ajv (from `ajv.bundle.js`) validates `intake` against
+`schema.js`. Only a clean pass enables handoff; any `warnings` render as a
+non-blocking notice alongside the download, never in place of it. `handoff.js`
+then, identically on every device:
 
 1. Downloads `intake.json` (Blob + object URL) from the validated object.
 2. Shows a success screen with an **Email it in** button that opens a prefilled
@@ -180,7 +214,8 @@ enables handoff. `handoff.js` then, identically on every device:
 3. Also shows the return address as plain text and a **Download again** link, so
    the flow is recoverable if the download or mail app misbehaves.
 
-Ajv errors and cross-field errors render inline against their fields.
+Ajv errors and cross-field errors render inline against their fields;
+warnings render in a separate, non-blocking notice.
 
 ---
 
@@ -200,7 +235,9 @@ and `mailto:` navigation).
 - **Assembler tests** (`tests/test_assemble.py`): feed form-state fixtures into
   `assemble.js` in-page, assert the assembled object validates against the
   vendored schema (via Python's `jsonschema`, already a dependency), and assert
-  each cross-field rule (pruning, health gate, date ordering, ≥1 format) fires.
+  each cross-field rule fires (pruning, health gate, disclaimer gate, date
+  ordering + event-window + duplicate-date + schedule rules, ≥1 output format)
+  and each warning fires (stale recent result, advisory consistency).
 - **Golden reproduction:** a fixture reproduces `schema/intake-example.json`'s
   structure from a plausible form-state, proving the form can emit the reference
   shape.
