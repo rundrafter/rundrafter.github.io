@@ -173,8 +173,8 @@ justfile                    # + sync-contract, serve, test targets
 
 **Keep `assemble.js` a pure, import-clean module** (no DOM, no side effects):
 input a plain form-state object, return `{ intake, errors, warnings }`. That is
-what makes it easy to drive directly from a Playwright test with the same Ajv
-+ schema the browser uses — highest fidelity. `form.js` owns DOM/browser
+what makes it easy to drive directly from a Playwright test with the same
+Ajv + schema the browser uses — highest fidelity. `form.js` owns DOM/browser
 concerns; `handoff.js` owns the file/download/mailto concerns.
 
 ### Contract sync mechanism
