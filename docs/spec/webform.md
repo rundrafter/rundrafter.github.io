@@ -296,4 +296,7 @@ These need you; the build tasks above don't block on them except T9.
 - [x] T6 — Email handoff + success screen
 - [x] T7 — Styling + UX
 - [x] T8 — ADRs + README
+- [ ] T10 — Pre-deploy hardening — see
+  [`pre-deploy-hardening.md`](pre-deploy-hardening.md) for the review
+  findings and its own H1–H5 checklist; gates T9
 - [ ] T9 — Deploy to `<org>.github.io`
