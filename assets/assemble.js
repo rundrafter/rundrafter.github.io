@@ -68,7 +68,7 @@ function daysBetween(aIso, bIso) {
 }
 
 // Cross-field product rules the schema can't express (see docs/architecture.md).
-// Mirrors run-drafter's stage 1 (validate.py / contracts.md) rule-for-rule.
+// Mirrors rundrafter's stage 1 (validate.py / contracts.md) rule-for-rule.
 // Returns human-readable messages; an empty array means the rules all pass.
 function validateCrossField(formState) {
   const errors = [];

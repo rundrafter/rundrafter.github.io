@@ -1,4 +1,4 @@
-"""Vendor the intake contract from the upstream run-drafter repo."""
+"""Vendor the intake contract from the upstream rundrafter repo."""
 
 import argparse
 import json
@@ -14,8 +14,8 @@ SCHEMA_DIR = REPO_ROOT / "schema"
 ASSETS_DIR = REPO_ROOT / "assets"
 SOURCE_MD = SCHEMA_DIR / "SOURCE.md"
 
-UPSTREAM_SIBLING = REPO_ROOT.parent / "run-drafter"
-UPSTREAM_RAW_BASE = "https://raw.githubusercontent.com/eirkkr/run-drafter"
+UPSTREAM_SIBLING = REPO_ROOT.parent / "rundrafter"
+UPSTREAM_RAW_BASE = "https://raw.githubusercontent.com/rundrafter/rundrafter"
 
 CONTRACT_FILES = ("intake-schema.json", "intake-example.json")
 
@@ -27,7 +27,7 @@ RULES_FILES = ("src/rundrafter/validate.py", "docs/spec/contracts.md")
 
 SOURCE_MD_TEMPLATE = """# Contract source
 
-Vendored from the upstream `run-drafter` repo's intake contract:
+Vendored from the upstream `rundrafter` repo's intake contract:
 
 - `intake-schema.json`
 - `intake-example.json`
@@ -114,7 +114,7 @@ def _sync(schema_dir: Path, assets_dir: Path) -> None:
 def _update_rules_revision() -> None:
     if not UPSTREAM_SIBLING.is_dir():
         raise SystemExit(
-            "--update-rules-revision requires a ../run-drafter sibling checkout"
+            "--update-rules-revision requires a ../rundrafter sibling checkout"
         )
     revision = _read_pinned(SCHEMA_DIR, "revision")
     rules_revision = _current_rules_revision()

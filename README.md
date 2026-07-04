@@ -1,24 +1,24 @@
 # rundrafter-webform
 
-The runner-facing intake form for [RunDrafter](https://github.com/eirkkr/run-drafter) -
+The runner-facing intake form for [RunDrafter](https://github.com/rundrafter/rundrafter) -
 a static, client-side page that collects a runner's details and assembles
 them into an `intake.json` for download. No backend: the runner emails the
 file back, and it's fed into the RunDrafter pipeline manually.
 
 This is phase 2 of RunDrafter's delivery plan - see
-[`docs/spec/structure-and-phasing.md`](https://github.com/eirkkr/run-drafter/blob/main/docs/spec/structure-and-phasing.md)
+[`docs/spec/structure-and-phasing.md`](https://github.com/rundrafter/rundrafter/blob/main/docs/spec/structure-and-phasing.md)
 in the main repo for the full roadmap and rationale.
 
 ## Contract
 
-This project depends on `run-drafter` only through the stable **intake
+This project depends on `rundrafter` only through the stable **intake
 contract**:
 
-- [`docs/intake.md`](https://github.com/eirkkr/run-drafter/blob/main/docs/intake.md) -
+- [`docs/intake.md`](https://github.com/rundrafter/rundrafter/blob/main/docs/intake.md) -
   field-by-field reference for the form.
-- [`docs/intake-schema.json`](https://github.com/eirkkr/run-drafter/blob/main/docs/intake-schema.json) -
+- [`docs/intake-schema.json`](https://github.com/rundrafter/rundrafter/blob/main/docs/intake-schema.json) -
   the authoritative schema the output must validate against.
-- [`docs/intake-example.json`](https://github.com/eirkkr/run-drafter/blob/main/docs/intake-example.json) -
+- [`docs/intake-example.json`](https://github.com/rundrafter/rundrafter/blob/main/docs/intake-example.json) -
   a golden fixture example.
 
 Keep this form in sync with those documents rather than duplicating the
@@ -43,18 +43,18 @@ Pages once deployed) is required even for local use.
 
 ### Syncing the intake contract
 
-The form depends on the sibling `run-drafter` repo only through the intake
+The form depends on the sibling `rundrafter` repo only through the intake
 contract (schema + example + field reference). `scripts/sync_contract.py` is
 the only thing that writes `schema/*` and `assets/schema.js`:
 
 ```sh
-just sync-contract     # vendor schema + example from ../run-drafter, regen schema.js
+just sync-contract     # vendor schema + example from ../rundrafter, regen schema.js
 just check-contract    # check for drift against upstream, without writing
 ```
 
-Locally this reads from a sibling `../run-drafter` checkout. The pinned
+Locally this reads from a sibling `../rundrafter` checkout. The pinned
 upstream revision is recorded in [`schema/SOURCE.md`](schema/SOURCE.md).
-There's no automated CI drift check yet — `run-drafter` is private, so an
+There's no automated CI drift check yet — `rundrafter` is private, so an
 unauthenticated fetch in CI would 404 (tracked in
 [#29](https://github.com/rundrafter/rundrafter.github.io/issues/29)). Run
 `just check-contract` by hand before relying on the vendored copy being
