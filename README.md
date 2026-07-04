@@ -55,25 +55,19 @@ just check-contract    # check for drift against upstream, without writing
 Locally this reads from a sibling `../run-drafter` checkout. The pinned
 upstream revision is recorded in [`schema/SOURCE.md`](schema/SOURCE.md).
 There's no automated CI drift check yet — `run-drafter` is private, so an
-unauthenticated fetch in CI would 404 (see `docs/spec/webform.md`'s manual
-steps for closing that gap). Run `just check-contract` by hand before relying
-on the vendored copy being current.
+unauthenticated fetch in CI would 404 (tracked in
+[#29](https://github.com/rundrafter/rundrafter.github.io/issues/29)). Run
+`just check-contract` by hand before relying on the vendored copy being
+current.
 
 ## Status
 
-Core build (T0–T8) is done: the form collects the full intake, validates
-client-side against the vendored schema, and hands off via download +
-prefilled email. A pre-deploy review (`docs/spec/pre-deploy-hardening.md`,
-T10) found and fixed contract-parity gaps, bugs, and error-surfacing UX
-(H1–H3); H4 closed out deploy prep — `.nojekyll`, a post-merge CI trigger, a
-favicon and meta description, a CSP meta tag, SHA-pinned CI actions, and a
-success-screen note that the intake travels by ordinary email; H5 added
-contract-drift prevention (the stage-1 parity test, a widened
-`check-contract` tripwire, and cross-repo standing instructions). T10 is
-done. Only the human-only manual steps in
-[`docs/spec/webform.md`](docs/spec/webform.md) (org creation, transfer,
-enabling Pages, branch protection, the CI drift-check PAT) remain before T9
-deploy.
-The build plan, decisions, and progress checklist live in
-[`docs/spec/webform.md`](docs/spec/webform.md); design rationale is in
-[`docs/decisions/`](docs/decisions/).
+Live at <https://rundrafter.github.io/>: the form collects the full intake,
+validates client-side against the vendored schema, and hands off via
+download + prefilled email, with branch protection on `main`. See
+[`docs/architecture.md`](docs/architecture.md) for how it's built and
+[`docs/decisions/`](docs/decisions/) for the design rationale.
+
+Privacy note: intakes carry health-screen data and arrive by ordinary email
+(see [ADR 003](docs/decisions/003-uniform-mailto-handoff.md)) — delete each
+`intake.json` from the inbox once it's been fed into the pipeline.
