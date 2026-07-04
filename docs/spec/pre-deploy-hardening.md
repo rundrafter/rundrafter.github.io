@@ -94,6 +94,43 @@ summary-only, not inline.
 16. Deploy prep: add `.nojekyll`; optional favicon +
     `<meta name="description">`.
 
+### E. Security audit (2026-07-04)
+
+A pre-deploy security audit of the whole static site (not just the diff)
+found **no vulnerabilities that block deploy**. Verified sound: all
+user-controlled values reach the DOM via `textContent` (no `innerHTML`
+with user data); `buildMailtoUrl` encodes header-injection characters;
+`assets/ajv.bundle.js` hash matches both `AJV_SOURCE.md` and cdnjs's
+published SRI for `ajv/8.17.1/ajv2020.min.js`; no secrets in the tree
+(relevant because Pages serves every committed file); no external
+requests at runtime — the site is fully self-contained.
+
+Hardening actions, folded into H4:
+
+17. **Meta CSP.** Pages can't set response headers, but a
+    `<meta http-equiv="Content-Security-Policy">` tag covers most
+    directives, and the site's self-contained design makes a strict
+    policy free: `default-src 'none'; script-src 'self'; style-src
+    'self'; img-src 'self'; form-action 'none'; base-uri 'none'`.
+    (`frame-ancestors` doesn't work via meta; acceptable — the page has
+    no authenticated or destructive actions to clickjack.)
+18. **CI supply-chain pinning** (`.github/workflows/ci.yml`). The just
+    installer is `curl | bash` from just.systems on every run — replace
+    with a SHA-pinned `extractions/setup-just` (or checksum-verify the
+    script). SHA-pin `actions/checkout` too, matching how `setup-uv` is
+    already pinned.
+
+Noted for the human-only T9 steps, not the build:
+
+- **Branch protection before Pages goes live.** ADR 004 makes
+  push-to-main the deploy mechanism, so main becomes production at
+  transfer time: require PRs on main, keep the org push/admin set
+  minimal.
+- **Privacy sign-off.** The intake includes health-screen data and the
+  handoff is ordinary email to a personal inbox (ADR 003) — defensible
+  for a manual pilot, but add a sentence on the page telling runners the
+  file travels by ordinary email, and delete intakes after processing.
+
 ### Explicitly fine / no action
 
 - Repo hygiene clean (caches and local settings correctly ignored).
@@ -174,12 +211,17 @@ omitted).
 ### H4 — chore: deploy prep
 
 Branch `chore/deploy-prep`. Add `.nojekyll`; `push: branches: [main]` CI
-trigger; favicon + meta description; refresh README "Status" and tick this
-plan's checklist. T9 then proceeds via the human-only manual steps in
-`webform.md`.
+trigger; favicon + meta description; the security-audit hardening
+(finding 17: meta CSP in `index.html`; finding 18: pin the just installer
+and SHA-pin `actions/checkout` in `ci.yml`); the audit's privacy sentence
+on the success screen ("this file travels by ordinary email"); refresh
+README "Status" and tick this plan's checklist. T9 then proceeds via the
+human-only manual steps in `webform.md` — which now also include branch
+protection on main and the intake-deletion practice (section E).
 
-*DoD:* `just check` green; README/spec reflect reality; repo ready for the
-Pages transfer.
+*DoD:* `just check` green with the CSP in place (the DOM smoke test
+exercises the page under the policy); CI green with pinned actions;
+README/spec reflect reality; repo ready for the Pages transfer.
 
 ### H5 — feat: contract-drift prevention
 
@@ -240,6 +282,6 @@ change upstream; both repos carry the cross-repo instruction.
 - [ ] H1 — Spec sync (cross-field rules ← upstream contract)
 - [ ] H2 — Validation parity + warnings channel
 - [ ] H3 — mailto encoding, other_reason, inline error mapping
-- [ ] H4 — Deploy prep
+- [ ] H4 — Deploy prep (incl. security-audit hardening: CSP, CI pinning)
 - [ ] H5 — Contract-drift prevention (parity test, widened tripwire,
   cross-repo instructions)

@@ -282,6 +282,14 @@ These need you; the build tasks above don't block on them except T9.
    secret, and have `scripts/sync_contract.py` send it as an `Authorization`
    header (or checkout the repo directly) in CI. `just check-contract` still
    works locally against the sibling checkout in the meantime.
+9. **Branch protection on `main` before enabling Pages.** ADR 004 makes
+   push-to-main the deploy mechanism, so `main` becomes production at
+   transfer time: require PRs on `main` and keep the org's push/admin set
+   minimal. (Security audit, `pre-deploy-hardening.md` section E.)
+10. **Intake-deletion practice.** Intakes carry health-screen data and
+    arrive by ordinary email (ADR 003) — delete each `intake.json` from
+    the inbox once it's been fed into the pipeline. (Security audit,
+    section E.)
 
 ---
 
