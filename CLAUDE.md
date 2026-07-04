@@ -12,7 +12,7 @@ rationale live in `docs/decisions/`.
 
 ## Cross-field validation parity
 
-`assets/assemble.js`'s cross-field rules mirror upstream `run-drafter`'s
+`assets/assemble.js`'s cross-field rules mirror upstream `rundrafter`'s
 `src/rundrafter/validate.py` stage-1 checks (see `docs/architecture.md`'s
 "Rules the schema can't express" — this drifted silently once already).
 Before changing that validation, or after any contract sync

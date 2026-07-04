@@ -10,7 +10,7 @@ lint:
 fix:
     uvx rumdl@0.2.26 check --fix .
 
-# Vendor the intake contract (schema + example) from upstream run-drafter.
+# Vendor the intake contract (schema + example) from upstream rundrafter.
 sync-contract:
     uv run python scripts/sync_contract.py
 

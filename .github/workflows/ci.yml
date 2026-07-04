@@ -34,7 +34,7 @@ jobs:
 
       - run: just test
 
-  # contract-drift is deferred: run-drafter is private, so an unauthenticated
+  # contract-drift is deferred: rundrafter is private, so an unauthenticated
   # raw.githubusercontent.com fetch 404s in CI. Revisit once a scoped PAT
   # secret exists for cross-repo access; `just check-contract` still works
   # locally against the sibling checkout.

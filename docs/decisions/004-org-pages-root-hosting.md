@@ -23,13 +23,12 @@ hosting-shape choice. Alternatives rejected:
   project outgrows the `github.io` URL.
 
 An org (rather than a personal user Pages site) also gives a natural home for
-the sibling `run-drafter` pipeline repo later, without another move.
+the sibling `rundrafter` pipeline repo later, without another move.
 
 ## Consequences
 
-- The repository is renamed `<org>.github.io`; its internal/project name in docs
-  stays "run-drafter intake form". The local `.fieldkit` symlink is an absolute
-  path and is unaffected by the rename.
+- The repository is renamed `<org>.github.io`. The local `.fieldkit` symlink is
+  an absolute path and is unaffected by the rename.
 - Creating the org, transferring the repo, and enabling Pages are manual,
   human-only steps (see the spec's "Manual steps"); the build does not depend on
   them until deploy (T9).

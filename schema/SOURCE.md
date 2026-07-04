@@ -1,6 +1,6 @@
 # Contract source
 
-Vendored from the upstream `run-drafter` repo's intake contract:
+Vendored from the upstream `rundrafter` repo's intake contract:
 
 - `intake-schema.json`
 - `intake-example.json`

@@ -16,21 +16,21 @@ For *why* the non-obvious choices were made, see the ADRs in
 
 ## Source of truth
 
-The form depends on `run-drafter` **only** through the intake contract. These
+The form depends on `rundrafter` **only** through the intake contract. These
 upstream files are authoritative; this repo vendors copies but never forks
 the contract:
 
-- `run-drafter/docs/intake-schema.json` — the schema the output must validate
+- `rundrafter/docs/intake-schema.json` — the schema the output must validate
   against (schema_version `"1"`).
-- `run-drafter/docs/intake-example.json` — golden example; authoritative for
+- `rundrafter/docs/intake-example.json` — golden example; authoritative for
   *shape*, and its values are the reference our fixtures reproduce.
-- `run-drafter/docs/intake.md` — field-by-field reference, including the
+- `rundrafter/docs/intake.md` — field-by-field reference, including the
   intended form input type for every field.
-- `run-drafter/docs/spec/contracts.md` — the `intake.json` contract table plus
+- `rundrafter/docs/spec/contracts.md` — the `intake.json` contract table plus
   the stage-1 tripwire note; authoritative for the cross-field *constraints*
   (date ordering, event windows, schedule rules) the schema alone can't
   express.
-- `run-drafter/src/rundrafter/validate.py` — stage 1's actual implementation
+- `rundrafter/src/rundrafter/validate.py` — stage 1's actual implementation
   of those cross-field rules; authoritative for exact semantics (strict vs.
   non-strict comparisons, error codes) whenever `contracts.md`'s prose is
   ambiguous.
@@ -73,7 +73,7 @@ collected by this form.
 The schema validates types/enums/patterns. These product rules are enforced
 by the assembler/validator; `assemble()` returns `{ intake, errors, warnings }`
 — a non-empty `errors` blocks handoff with a clear message, `warnings`
-surface as a non-blocking notice. The rules mirror `run-drafter`'s stage 1
+surface as a non-blocking notice. The rules mirror `rundrafter`'s stage 1
 (`validate.py` / `contracts.md`) rule-for-rule, so an intake this form
 accepts never bounces back from the pipeline.
 
@@ -116,7 +116,7 @@ accepts never bounces back from the pipeline.
 
 Before changing any of these rules, or after any contract sync
 (`just sync-contract`), diff `assets/assemble.js` against the sibling
-`run-drafter` checkout's `validate.py` + `docs/spec/contracts.md`, run
+`rundrafter` checkout's `validate.py` + `docs/spec/contracts.md`, run
 `tests/test_stage1_parity.py`, and if the rules changed, re-pin with
 `uv run python scripts/sync_contract.py --update-rules-revision`. This
 validation drifted silently from upstream once already (pre-deploy audit,
@@ -144,7 +144,7 @@ assets/
 schema/
   intake-schema.json        # vendored mirror (source for schema.js + tests)
   intake-example.json       # vendored golden example
-  SOURCE.md                 # upstream path + pinned run-drafter revision
+  SOURCE.md                 # upstream path + pinned rundrafter revision
 scripts/
   sync_contract.py          # copy schema+example from upstream; regen schema.js
 tests/
@@ -171,7 +171,7 @@ is dev/CI tooling only, per ADR 001; nothing it produces ships an
 interpreter or a build step, only static JSON/JS files:
 
 1. Copy `intake-schema.json` and `intake-example.json` from the upstream
-   source — locally from the sibling checkout (`../run-drafter/docs/`), or
+   source — locally from the sibling checkout (`../rundrafter/docs/`), or
    in CI from GitHub raw at the pinned revision in `schema/SOURCE.md`.
 2. Regenerate `assets/schema.js` by wrapping the JSON as
    `export default <json>;`. Inlining as a module means the page needs no
@@ -180,7 +180,7 @@ interpreter or a build step, only static JSON/JS files:
 
 CI runs the sync into a temp dir and diffs against the committed copies; a
 mismatch fails the build with "contract drift — run `just sync-contract`".
-(The CI job itself is currently disabled — `run-drafter` is private and the
+(The CI job itself is currently disabled — `rundrafter` is private and the
 job's unauthenticated `raw.githubusercontent.com` fetch 404s; restoring it
 needs a scoped PAT, tracked separately.)
 
@@ -251,7 +251,7 @@ intercept downloads and `mailto:` navigation).
   through the sibling checkout's real `rundrafter validate` CLI, so a
   cross-field rule this suite considers passing is checked against
   upstream's actual implementation, not just this repo's re-implementation
-  of it. Skipped without a `../run-drafter` checkout.
+  of it. Skipped without a `../rundrafter` checkout.
 
 Run the narrowest relevant test while iterating; widen to the full file
 before done.

@@ -1,6 +1,6 @@
 """Executable parity test against the real upstream stage-1 validator.
 
-Guards against run-drafter's `validate.py` cross-field rules drifting
+Guards against rundrafter's `validate.py` cross-field rules drifting
 silently out of sync with their client-side re-implementation in
 assemble.js (see docs/architecture.md's "Rules the schema can't express").
 Every intake this suite considers valid is piped through the real
@@ -22,12 +22,12 @@ from playwright.sync_api import Page
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
-UPSTREAM_DIR = REPO_ROOT.parent / "run-drafter"
+UPSTREAM_DIR = REPO_ROOT.parent / "rundrafter"
 NOW = "2026-01-01T00:00:00.000Z"
 
 pytestmark = pytest.mark.skipif(
     not UPSTREAM_DIR.is_dir(),
-    reason="../run-drafter sibling checkout not present",
+    reason="../rundrafter sibling checkout not present",
 )
 
 

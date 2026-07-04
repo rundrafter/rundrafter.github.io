@@ -9,7 +9,7 @@ pinned standalone browser bundle) and run at submit time; an object that fails
 validation shows errors inline and blocks the download.
 
 The schema is vendored, never forked: `scripts/sync_contract.py` copies it from
-`run-drafter` (see the spec's "Contract sync mechanism").
+`rundrafter` (see the spec's "Contract sync mechanism").
 
 ## Reason
 
@@ -41,7 +41,7 @@ copy running under a different JS runtime.
   in ADR 001's consequences: Chrome blocks `file://` module-script loads.)
 - Validation is only as current as the last `sync-contract` run. A CI drift
   check (re-running the sync and diffing) is the intended way to keep
-  "vendored" from meaning "stale", but it's deferred for now: `run-drafter` is
+  "vendored" from meaning "stale", but it's deferred for now: `rundrafter` is
   private, so the unauthenticated fetch CI would need 404s. Until a scoped
   token closes that gap (see the spec's manual steps), `just check-contract`
   against the sibling checkout is the only drift check, and it's manual.
