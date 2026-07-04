@@ -1,4 +1,4 @@
-# CLAUDE.md — run-drafter-webform
+# CLAUDE.md — rundrafter-webform
 
 @.fieldkit/CLAUDE.md
 @.fieldkit/conventions/python/README.md

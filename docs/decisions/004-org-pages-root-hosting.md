@@ -10,12 +10,12 @@ so its root serves the site.
 
 ## Reason
 
-The URL should read as `run-drafter`, not `run-drafter-webform`. With GitHub
+The URL should read as `run-drafter`, not `rundrafter-webform`. With GitHub
 Pages the public path is determined by how the site is hosted, so this is a
 hosting-shape choice. Alternatives rejected:
 
 - **Project Pages site (this repo as-is):** publishes to
-  `eirkkr.github.io/run-drafter-webform` — the path is the repo name, which is
+  `eirkkr.github.io/rundrafter-webform` — the path is the repo name, which is
   the internal name we specifically don't want runners to see.
 - **Custom domain:** the cleanest branding, but requires registering and paying
   for a domain plus DNS records and HTTPS provisioning — infrastructure and

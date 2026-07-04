@@ -1,4 +1,4 @@
-# run-drafter-webform
+# rundrafter-webform
 
 The runner-facing intake form for [RunDrafter](https://github.com/eirkkr/run-drafter) -
 a static, client-side page that collects a runner's details and assembles
