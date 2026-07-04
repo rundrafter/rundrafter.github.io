@@ -137,16 +137,66 @@ function setupHealthAcknowledgement(form) {
   update();
 }
 
-function renderErrors(container, messages) {
+function clearFieldErrors(form) {
+  form.querySelectorAll(".field-error").forEach((el) => el.remove());
+  form.querySelectorAll('[aria-invalid="true"]').forEach((el) => {
+    el.removeAttribute("aria-invalid");
+    el.removeAttribute("aria-describedby");
+  });
+}
+
+// Marks the field(s) named by a dot-path (e.g. "goal.date", matching Ajv's
+// instancePath once converted) as invalid and drops a message right after
+// them - the "inline against their fields" half of error surfacing. Falls
+// back to summary-only if no field with that name exists (e.g. a repeating
+// row's error before the row has been added).
+let fieldErrorCount = 0;
+
+function markFieldError(form, path, message) {
+  if (!path) return false;
+  const fields = form.querySelectorAll(`[name="${CSS.escape(path)}"]`);
+  if (fields.length === 0) return false;
+
+  const isGroup = fields.length > 1;
+  const anchor = isGroup ? (fields[0].closest("fieldset") ?? fields[0]) : fields[0];
+
+  const note = document.createElement("p");
+  note.className = "field-error";
+  note.id = `field-error-${fieldErrorCount++}`;
+  note.textContent = message;
+  anchor.insertAdjacentElement(isGroup ? "beforeend" : "afterend", note);
+
+  fields.forEach((el) => {
+    el.setAttribute("aria-invalid", "true");
+    el.setAttribute("aria-describedby", note.id);
+  });
+  if (isGroup) anchor.setAttribute("aria-invalid", "true");
+  return true;
+}
+
+function ajvPathToFieldName(instancePath) {
+  return instancePath.replace(/^\//, "").replace(/\//g, ".");
+}
+
+function renderErrors(form, container, errors) {
+  clearFieldErrors(form);
   container.innerHTML = "";
-  if (messages.length === 0) return;
+  if (errors.length === 0) return;
+
   const list = document.createElement("ul");
-  for (const message of messages) {
+  for (const error of errors) {
+    const message =
+      typeof error === "string"
+        ? error
+        : `${error.path ? `${error.path}: ` : ""}${error.message}`;
+    markFieldError(form, error.path, message);
+
     const item = document.createElement("li");
     item.textContent = message;
     list.appendChild(item);
   }
   container.appendChild(list);
+  container.focus();
 }
 
 function showSuccessScreen(form, intake) {
@@ -171,7 +221,7 @@ function handleSubmit(event) {
   const { intake, errors } = assemble(formState);
 
   if (errors.length > 0) {
-    renderErrors(errorContainer, errors);
+    renderErrors(form, errorContainer, errors);
     return;
   }
 
@@ -181,14 +231,15 @@ function handleSubmit(event) {
   const valid = validate(intake);
 
   if (!valid) {
-    const messages = validate.errors.map(
-      (err) => `${err.instancePath || "(root)"} ${err.message}`,
-    );
-    renderErrors(errorContainer, messages);
+    const ajvErrors = validate.errors.map((err) => ({
+      path: err.instancePath ? ajvPathToFieldName(err.instancePath) : null,
+      message: `${err.instancePath || "(root)"} ${err.message}`,
+    }));
+    renderErrors(form, errorContainer, ajvErrors);
     return;
   }
 
-  renderErrors(errorContainer, []);
+  renderErrors(form, errorContainer, []);
   downloadIntake(intake);
   showSuccessScreen(form, intake);
 }

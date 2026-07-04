@@ -294,6 +294,6 @@ These need you; the build tasks above don't block on them except T9.
 - [x] T4 — Cross-field + conditional logic
 - [x] T5 — Test suite + fixtures
 - [x] T6 — Email handoff + success screen
-- [ ] T7 — Styling + UX
+- [x] T7 — Styling + UX
 - [ ] T8 — ADRs + README
 - [ ] T9 — Deploy to `<org>.github.io`
