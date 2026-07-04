@@ -262,7 +262,7 @@ test), `scripts/sync_contract.py`, `schema/SOURCE.md`, `CLAUDE.md`.
   `validate.py` and run the parity test.
 - **Reciprocal upstream tripwire** (separate small PR in `run-drafter`):
   note on `validate.py`'s intake-rule section and/or its CLAUDE.md that
-  `run-drafter-webform` mirrors these rules client-side, so changing them
+  `rundrafter-webform` mirrors these rules client-side, so changing them
   requires a parity sync there. Drift originates upstream; the reminder
   must live where the change happens.
 
