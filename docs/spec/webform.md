@@ -295,5 +295,5 @@ These need you; the build tasks above don't block on them except T9.
 - [x] T5 — Test suite + fixtures
 - [x] T6 — Email handoff + success screen
 - [x] T7 — Styling + UX
-- [ ] T8 — ADRs + README
+- [x] T8 — ADRs + README
 - [ ] T9 — Deploy to `<org>.github.io`

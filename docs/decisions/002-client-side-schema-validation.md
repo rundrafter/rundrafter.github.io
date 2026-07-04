@@ -8,8 +8,8 @@ against the authoritative JSON Schema in the browser. A vendored copy of
 pinned standalone browser bundle) and run at submit time; an object that fails
 validation shows errors inline and blocks the download.
 
-The schema is vendored, never forked: `scripts/sync-contract.sh` copies it from
-`run-drafter` and CI fails on drift (see the spec's "Contract sync mechanism").
+The schema is vendored, never forked: `scripts/sync_contract.py` copies it from
+`run-drafter` (see the spec's "Contract sync mechanism").
 
 ## Reason
 
@@ -39,8 +39,12 @@ copy running under a different JS runtime.
   validation needs no separate `fetch` of the schema file. (The page as a whole
   still needs a static server rather than `file://`, for the unrelated reason
   in ADR 001's consequences: Chrome blocks `file://` module-script loads.)
-- Validation is only as current as the last `sync-contract` run; the CI drift
-  check is what keeps "vendored" from meaning "stale".
+- Validation is only as current as the last `sync-contract` run. A CI drift
+  check (re-running the sync and diffing) is the intended way to keep
+  "vendored" from meaning "stale", but it's deferred for now: `run-drafter` is
+  private, so the unauthenticated fetch CI would need 404s. Until a scoped
+  token closes that gap (see the spec's manual steps), `just check-contract`
+  against the sibling checkout is the only drift check, and it's manual.
 - Cross-field product rules the schema can't express (date ordering, the
   health-screen consent gate, non-empty output formats) are enforced separately
   in `assemble.js` — schema validation is necessary, not sufficient.
