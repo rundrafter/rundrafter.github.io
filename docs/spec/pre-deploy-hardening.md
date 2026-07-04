@@ -187,6 +187,13 @@ Branch `feature/stage1-validation-parity`. Files: `assets/assemble.js`,
 *DoD:* each stage-1 blocking rule has a failing-input test that blocks and a
 passing-input test that validates; warnings surface without blocking.
 
+Scope note: only `RECENT_RESULT_OLD` shipped as a warning. The other
+promised warning — "`strength_days` / `rest_days` / `days_available` should
+be consistent" — has no formula anywhere upstream or in `intake.md` beyond
+that one adjective, so implementing it now would mean inventing product
+behavior rather than mirroring a spec. Deferred; needs its own product
+decision before a follow-up implements it.
+
 ### H3 — fix: mailto encoding, other_reason field, inline error mapping
 
 Branch `bugfix/handoff-and-error-surfacing`. Files: `assets/handoff.js`,
@@ -280,7 +287,7 @@ change upstream; both repos carry the cross-repo instruction.
 ## Progress
 
 - [x] H1 — Spec sync (cross-field rules ← upstream contract)
-- [ ] H2 — Validation parity + warnings channel
+- [x] H2 — Validation parity + warnings channel
 - [ ] H3 — mailto encoding, other_reason, inline error mapping
 - [ ] H4 — Deploy prep (incl. security-audit hardening: CSP, CI pinning)
 - [ ] H5 — Contract-drift prevention (parity test, widened tripwire,

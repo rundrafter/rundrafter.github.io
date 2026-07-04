@@ -122,7 +122,7 @@
             id="schedule-days-available"
             name="weekly_schedule.days_available"
             type="number"
-            min="1"
+            min="3"
             max="7"
             required
           />
@@ -483,6 +483,8 @@
 
         <button type="submit">Download intake.json</button>
       </form>
+
+      <div id="form-warnings" role="status" aria-live="polite"></div>
 
       <section id="success-screen" aria-labelledby="success-heading" hidden>
         <h2 id="success-heading">intake.json downloaded</h2>
