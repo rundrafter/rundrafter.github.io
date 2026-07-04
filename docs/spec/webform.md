@@ -318,13 +318,19 @@ These need you; the build tasks above don't block on them except T9.
 2. **Disclaimer + PAR-Q acknowledgement wording.** Exact text for
    `consent.disclaimer_accepted` and the health-screen warning ("training
    guidance, not medical advice…"). Legal-ish copy — your call. Needed for T4/T6.
-3. **Create the GitHub org** (`run-drafter`, or `rundrafter` if taken). Account/
-   org creation is human-only.
-4. **Transfer + rename this repo** to `<org>/<org>.github.io` so its root serves
-   the site. (The local `.fieldkit` symlink is an absolute local path and is
-   unaffected.)
-5. **Enable GitHub Pages** — Settings → Pages → source `main` / root — and
-   confirm the live URL.
+3. ~~Create the GitHub org (`run-drafter`, or `rundrafter` if taken). Account/
+   org creation is human-only.~~ Resolved: org `rundrafter` created.
+4. ~~Transfer + rename this repo to `<org>/<org>.github.io` so its root serves
+   the site.~~ Resolved: transferred and renamed to
+   `rundrafter/rundrafter.github.io`, and made public — the `rundrafter` org
+   is on the Free plan, which only supports Pages and branch protection on
+   public repos; the pre-deploy audit already cleared this (no secrets in
+   the tree). (The local `.fieldkit` symlink is an absolute local path and
+   is unaffected.)
+5. ~~Enable GitHub Pages — Settings → Pages → source `main` / root — and
+   confirm the live URL.~~ Resolved: renaming to the `<org>.github.io` name
+   auto-enabled Pages (source `main`/root); live at
+   https://rundrafter.github.io/.
 6. ~~Confirm node-in-CI is acceptable for tests (or veto it).~~ Resolved: no
    node/npm anywhere; tests use Playwright's Python bindings instead (see
    ADR 001).
@@ -337,10 +343,12 @@ These need you; the build tasks above don't block on them except T9.
    secret, and have `scripts/sync_contract.py` send it as an `Authorization`
    header (or checkout the repo directly) in CI. `just check-contract` still
    works locally against the sibling checkout in the meantime.
-9. **Branch protection on `main` before enabling Pages.** ADR 004 makes
+9. ~~Branch protection on `main` before enabling Pages. ADR 004 makes
    push-to-main the deploy mechanism, so `main` becomes production at
    transfer time: require PRs on `main` and keep the org's push/admin set
-   minimal. (Security audit, `pre-deploy-hardening.md` section E.)
+   minimal.~~ Resolved: PRs required on `main` (0 approvals, since it's a
+   solo repo), enforced for admins too, force-pushes and deletions blocked.
+   (Security audit, `pre-deploy-hardening.md` section E.)
 10. **Intake-deletion practice.** Intakes carry health-screen data and
     arrive by ordinary email (ADR 003) — delete each `intake.json` from
     the inbox once it's been fed into the pipeline. (Security audit,
@@ -362,5 +370,8 @@ These need you; the build tasks above don't block on them except T9.
 - [x] T10 — Pre-deploy hardening — see
   [`pre-deploy-hardening.md`](pre-deploy-hardening.md) for the review
   findings and its own H1–H5 checklist (all done); gates T9
-- [ ] T9 — Deploy to `<org>.github.io` — blocked on the human-only manual
-  steps above (org creation, transfer, enable Pages, branch protection)
+- [x] T9 — Deploy to `<org>.github.io` — done: org created, repo
+  transferred/renamed/made public, Pages live at
+  https://rundrafter.github.io/, branch protection on `main`. Manual steps 8
+  (CI drift-check PAT) and 10 (intake-deletion practice) remain but don't
+  gate T9.
