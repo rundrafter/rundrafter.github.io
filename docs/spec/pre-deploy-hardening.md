@@ -288,7 +288,7 @@ change upstream; both repos carry the cross-repo instruction.
 
 - [x] H1 — Spec sync (cross-field rules ← upstream contract)
 - [x] H2 — Validation parity + warnings channel
-- [ ] H3 — mailto encoding, other_reason, inline error mapping
+- [x] H3 — mailto encoding, other_reason, inline error mapping
 - [ ] H4 — Deploy prep (incl. security-audit hardening: CSP, CI pinning)
 - [ ] H5 — Contract-drift prevention (parity test, widened tripwire,
   cross-repo instructions)

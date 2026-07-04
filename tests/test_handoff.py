@@ -9,10 +9,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qs, unquote, urlsplit
+from urllib.parse import unquote, urlsplit
 
 from playwright.sync_api import Page
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
 RETURN_EMAIL = "eric.parkin@protonmail.com"
 
@@ -33,15 +34,21 @@ def build_mailto_url(page: Page, intake: dict[str, Any]) -> str:
 
 
 def parse_mailto(url: str) -> tuple[str, dict[str, str]]:
+    """Parse a mailto: URL's query with `unquote` only (not `unquote_plus` /
+    `parse_qs`, which would decode `+` as space and mask RFC 6068 violations)."""
     split = urlsplit(url)
     assert split.scheme == "mailto"
-    params = {k: unquote(v[0]) for k, v in parse_qs(split.query).items()}
+    assert "+" not in split.query, "mailto query must be percent-encoded, not form-encoded"
+    params = {}
+    for pair in split.query.split("&"):
+        key, _, value = pair.partition("=")
+        params[key] = unquote(value)
     return split.path, params
 
 
 def test_return_email_constant() -> None:
     """The vendored source module exports the configured return address."""
-    text = Path("assets/handoff.js").read_text()
+    text = (REPO_ROOT / "assets" / "handoff.js").read_text()
     assert f'"{RETURN_EMAIL}"' in text
 
 

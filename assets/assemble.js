@@ -35,6 +35,15 @@ function pruneOptionalObject(obj) {
   return omitEmpty(obj);
 }
 
+// health_acknowledged is a single checkbox, so an unraised health flag still
+// submits it as `false` (omitEmpty keeps booleans); drop it in that case so
+// it's only ever present when the runner actually acknowledged the gate.
+function pruneConsent(consent, timestamp) {
+  const merged = { ...consent, accepted_at: timestamp };
+  if (merged.health_acknowledged === false) delete merged.health_acknowledged;
+  return omitEmpty(merged);
+}
+
 function pruneStrengthCross(strengthCross) {
   const cleaned = pruneOptionalObject(strengthCross);
   if (!cleaned) return undefined;
@@ -144,6 +153,10 @@ function validateCrossField(formState) {
   }
 
   const restDays = schedule.rest_days ?? [];
+  if (restDays.length === 0) {
+    errors.push("Select at least one rest day.");
+  }
+
   const preferredOnRestDay = [
     ...new Set(
       (schedule.preferred_sessions ?? [])
@@ -155,6 +168,20 @@ function validateCrossField(formState) {
     errors.push(
       `Preferred session day(s) ${preferredOnRestDay.join(", ")} fall on a rest day.`,
     );
+  }
+
+  // Anchor sessions require both distance and effort (dependentRequired in
+  // the schema); catch a lopsided pair here with a message naming the row,
+  // rather than letting it fall through to a row-index Ajv error.
+  for (const session of schedule.preferred_sessions ?? []) {
+    const hasDistance = session?.distance !== undefined && session?.distance !== null;
+    const hasEffort = session?.effort !== undefined && session?.effort !== null && session?.effort !== "";
+    if (hasDistance !== hasEffort) {
+      const label = session?.description || session?.day || "session";
+      errors.push(
+        `Preferred session "${label}" needs both distance and effort to become an anchor session — fill in both or leave both blank.`,
+      );
+    }
   }
 
   if (!Array.isArray(output.formats) || output.formats.length === 0) {
@@ -209,10 +236,7 @@ export function assemble(formState, { now } = {}) {
     preferences: omitEmpty(formState.preferences ?? {}),
     ...(injuries && { injuries }),
     health_screen: omitEmpty(formState.health_screen ?? {}),
-    consent: omitEmpty({
-      ...formState.consent,
-      accepted_at: timestamp,
-    }),
+    consent: pruneConsent(formState.consent, timestamp),
     ...(bRaces && { b_races: bRaces }),
     ...(otherEvents && { other_events: otherEvents }),
     ...(notes && { notes }),

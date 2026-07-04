@@ -35,9 +35,9 @@ function composeBody() {
 }
 
 export function buildMailtoUrl(intake, { recipient = RETURN_EMAIL } = {}) {
-  const params = new URLSearchParams({
-    subject: composeSubject(intake),
-    body: composeBody(),
-  });
-  return `mailto:${recipient}?${params.toString()}`;
+  const params = { subject: composeSubject(intake), body: composeBody() };
+  const query = Object.entries(params)
+    .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+    .join("&");
+  return `mailto:${recipient}?${query}`;
 }
