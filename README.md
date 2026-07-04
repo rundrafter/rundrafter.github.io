@@ -61,9 +61,12 @@ on the vendored copy being current.
 
 ## Status
 
-Core build (T0–T7) is done: the form collects the full intake, validates
+Core build (T0–T8) is done: the form collects the full intake, validates
 client-side against the vendored schema, and hands off via download +
-prefilled email. Docs (T8) and deployment (T9) are what's left. The build
-plan, decisions, and progress checklist live in
+prefilled email. Before deployment (T9), a pre-deploy review found fixes the
+form needs — chiefly cross-field validation parity with the upstream
+pipeline — planned in
+[`docs/spec/pre-deploy-hardening.md`](docs/spec/pre-deploy-hardening.md).
+The build plan, decisions, and progress checklist live in
 [`docs/spec/webform.md`](docs/spec/webform.md); design rationale is in
 [`docs/decisions/`](docs/decisions/).
