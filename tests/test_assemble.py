@@ -239,6 +239,52 @@ def test_days_available_too_few_blocks(page: Page) -> None:
     assert any("3 running days" in e.lower() for e in result["errors"])
 
 
+def test_rest_days_empty_blocks(page: Page) -> None:
+    """No rest day selected blocks handoff with a friendly message."""
+    state = valid_state()
+    state["weekly_schedule"]["rest_days"] = []
+    result = run_assemble(page, state)
+    assert any("rest day" in e.lower() for e in result["errors"])
+
+
+def test_preferred_session_distance_without_effort_blocks(page: Page) -> None:
+    """A preferred session with distance but no effort blocks with a friendly
+    message naming the row, rather than a raw Ajv dependentRequired error."""
+    state = valid_state()
+    state["weekly_schedule"]["preferred_sessions"] = [
+        {"day": "Wednesday", "description": "parkrun", "distance": 5}
+    ]
+    result = run_assemble(page, state)
+    assert any("parkrun" in e and "anchor session" in e for e in result["errors"])
+
+
+def test_preferred_session_effort_without_distance_blocks(page: Page) -> None:
+    """A preferred session with effort but no distance blocks the same way."""
+    state = valid_state()
+    state["weekly_schedule"]["preferred_sessions"] = [
+        {"day": "Wednesday", "description": "parkrun", "effort": "easy"}
+    ]
+    result = run_assemble(page, state)
+    assert any("parkrun" in e and "anchor session" in e for e in result["errors"])
+
+
+def test_preferred_session_with_both_distance_and_effort_passes(page: Page) -> None:
+    """A preferred session with both distance and effort is a valid anchor
+    session and does not block."""
+    state = valid_state()
+    state["weekly_schedule"]["preferred_sessions"] = [
+        {
+            "day": "Wednesday",
+            "description": "parkrun",
+            "distance": 5,
+            "effort": "easy",
+        }
+    ]
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert_schema_valid(result["intake"])
+
+
 def test_days_available_boundary_passes(page: Page) -> None:
     """Exactly 3 running days available per week is allowed."""
     state = valid_state()
@@ -283,6 +329,30 @@ def test_valid_state_has_no_warnings(page: Page) -> None:
     """A form-state within all thresholds produces no warnings."""
     result = run_assemble(page, valid_state())
     assert result["warnings"] == []
+
+
+def test_health_acknowledged_false_is_omitted(page: Page) -> None:
+    """A hidden, unchecked health_acknowledged control still submits `false`
+    (single checkbox); it should be dropped rather than emitted."""
+    state = valid_state()
+    state["consent"]["health_acknowledged"] = False
+    result = run_assemble(page, state)
+    assert "health_acknowledged" not in result["intake"]["consent"]
+
+
+def test_other_reason_blank_is_omitted(page: Page) -> None:
+    """A blank health_screen.other_reason is omitted, not emitted as ""."""
+    result = run_assemble(page, valid_state())
+    assert "other_reason" not in result["intake"]["health_screen"]
+
+
+def test_other_reason_filled_round_trips(page: Page) -> None:
+    """A filled health_screen.other_reason is carried through to the intake."""
+    state = valid_state()
+    state["health_screen"]["other_reason"] = "Recovering from a cold"
+    result = run_assemble(page, state)
+    assert result["intake"]["health_screen"]["other_reason"] == "Recovering from a cold"
+    assert_schema_valid(result["intake"])
 
 
 def test_output_formats_required(page: Page) -> None:
@@ -359,3 +429,35 @@ def test_dom_smoke_fill_download_validates(page: Page) -> None:
 
     downloaded = json.loads(Path(download_info.value.path()).read_text())
     assert_schema_valid(downloaded)
+
+
+def test_empty_required_field_shows_inline_error(page: Page) -> None:
+    """Submitting with a required field left blank (novalidate lets it reach
+    Ajv) shows a `.field-error` right next to that field, not just a
+    summary-only Ajv message."""
+    page.select_option("#goal-distance", "marathon")
+    page.fill("#goal-date", "2026-10-11")
+    page.fill("#goal-target-time", "3:45:00")
+    page.fill("#goal-start-date", "2026-06-01")
+
+    page.select_option("#recent-result-distance", "half")
+    page.fill("#recent-result-time", "1:45:00")
+    page.fill("#recent-result-date", "2026-05-01")
+
+    page.fill("#fitness-weekly-distance", "40")
+    page.fill("#fitness-longest-run", "18")
+
+    page.fill("#schedule-days-available", "5")
+    page.select_option("#schedule-long-run-day", "Sunday")
+    page.check('input[name="weekly_schedule.rest_days"][value="Monday"]')
+
+    page.check('input[name="consent.disclaimer_accepted"]')
+    page.check('input[name="output.formats"][value="spreadsheet"]')
+
+    # goal.race is left blank.
+    page.click('button[type="submit"]')
+
+    race_field = page.locator('[name="goal.race"]')
+    assert race_field.get_attribute("aria-invalid") == "true"
+    error_id = race_field.get_attribute("aria-describedby")
+    assert page.locator(f"#{error_id}").inner_text() == "goal.race: This field is required."

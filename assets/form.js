@@ -178,6 +178,26 @@ function ajvPathToFieldName(instancePath) {
   return instancePath.replace(/^\//, "").replace(/\//g, ".");
 }
 
+// Ajv reports `required`/`dependentRequired` failures against the *parent*
+// path (e.g. "/goal") with the missing key in `params.missingProperty`, so
+// `markFieldError` never finds a `[name="goal"]` element. Rebuild the path
+// to point at the actual missing field instead, with a friendly message;
+// other keywords fall back to the raw instancePath + message.
+function ajvErrorToFieldError(err) {
+  if (err.keyword === "required" || err.keyword === "dependentRequired") {
+    const basePath = err.instancePath ? ajvPathToFieldName(err.instancePath) : "";
+    const missing = err.params.missingProperty;
+    return {
+      path: basePath ? `${basePath}.${missing}` : missing,
+      message: "This field is required.",
+    };
+  }
+  return {
+    path: err.instancePath ? ajvPathToFieldName(err.instancePath) : null,
+    message: `${err.instancePath || "(root)"} ${err.message}`,
+  };
+}
+
 function renderErrors(form, container, errors) {
   clearFieldErrors(form);
   container.innerHTML = "";
@@ -247,10 +267,7 @@ function handleSubmit(event) {
   const valid = validate(intake);
 
   if (!valid) {
-    const ajvErrors = validate.errors.map((err) => ({
-      path: err.instancePath ? ajvPathToFieldName(err.instancePath) : null,
-      message: `${err.instancePath || "(root)"} ${err.message}`,
-    }));
+    const ajvErrors = validate.errors.map(ajvErrorToFieldError);
     renderErrors(form, errorContainer, ajvErrors);
     return;
   }
