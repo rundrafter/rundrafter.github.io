@@ -70,7 +70,7 @@ favicon and meta description, a CSP meta tag, SHA-pinned CI actions, and a
 success-screen note that the intake travels by ordinary email; H5 added
 contract-drift prevention (the stage-1 parity test, a widened
 `check-contract` tripwire, and cross-repo standing instructions). T10 is
-done. T9 is done: the form is live at https://rundrafter.github.io/, with
+done. T9 is done: the form is live at <https://rundrafter.github.io/>, with
 branch protection on `main`. Two human-only manual steps remain (the CI
 drift-check PAT, the intake-deletion practice) — see
 [`docs/spec/webform.md`](docs/spec/webform.md) — but neither gates deploy.

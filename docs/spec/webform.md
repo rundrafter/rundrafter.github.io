@@ -330,7 +330,7 @@ These need you; the build tasks above don't block on them except T9.
 5. ~~Enable GitHub Pages — Settings → Pages → source `main` / root — and
    confirm the live URL.~~ Resolved: renaming to the `<org>.github.io` name
    auto-enabled Pages (source `main`/root); live at
-   https://rundrafter.github.io/.
+   <https://rundrafter.github.io/>.
 6. ~~Confirm node-in-CI is acceptable for tests (or veto it).~~ Resolved: no
    node/npm anywhere; tests use Playwright's Python bindings instead (see
    ADR 001).
@@ -372,6 +372,6 @@ These need you; the build tasks above don't block on them except T9.
   findings and its own H1–H5 checklist (all done); gates T9
 - [x] T9 — Deploy to `<org>.github.io` — done: org created, repo
   transferred/renamed/made public, Pages live at
-  https://rundrafter.github.io/, branch protection on `main`. Manual steps 8
+  <https://rundrafter.github.io/>, branch protection on `main`. Manual steps 8
   (CI drift-check PAT) and 10 (intake-deletion practice) remain but don't
   gate T9.
