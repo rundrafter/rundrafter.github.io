@@ -296,6 +296,5 @@ change upstream; both repos carry the cross-repo instruction.
 - [x] H3 — mailto encoding, other_reason, inline error mapping
 - [x] H4 — Deploy prep (incl. security-audit hardening: CSP, CI pinning)
 - [x] H5 — Contract-drift prevention (parity test, widened tripwire,
-  cross-repo instructions). Reciprocal upstream tripwire is committed on
-  `run-drafter`'s `chore/intake-rule-parity-tripwire` branch, PR not yet
-  opened.
+  cross-repo instructions, incl. `run-drafter`'s reciprocal tripwire
+  comment, merged upstream in #60)
