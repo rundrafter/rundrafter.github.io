@@ -1,5 +1,5 @@
 import { assemble } from "./assemble.js";
-import { downloadIntake } from "./handoff.js";
+import { downloadIntake, buildMailtoUrl, RETURN_EMAIL } from "./handoff.js";
 import schema from "./schema.js";
 
 function setPath(obj, path, value) {
@@ -149,6 +149,19 @@ function renderErrors(container, messages) {
   container.appendChild(list);
 }
 
+function showSuccessScreen(form, intake) {
+  const successScreen = document.getElementById("success-screen");
+  if (!successScreen) return;
+
+  document.getElementById("email-it-in").href = buildMailtoUrl(intake);
+  document.getElementById("return-email").textContent = RETURN_EMAIL;
+  document.getElementById("download-again").onclick = () =>
+    downloadIntake(intake);
+
+  form.hidden = true;
+  successScreen.hidden = false;
+}
+
 function handleSubmit(event) {
   event.preventDefault();
 
@@ -177,6 +190,7 @@ function handleSubmit(event) {
 
   renderErrors(errorContainer, []);
   downloadIntake(intake);
+  showSuccessScreen(form, intake);
 }
 
 const form = document.getElementById("intake-form");
