@@ -110,8 +110,13 @@ Hardening actions, folded into H4:
 17. **Meta CSP.** Pages can't set response headers, but a
     `<meta http-equiv="Content-Security-Policy">` tag covers most
     directives, and the site's self-contained design makes a strict
-    policy free: `default-src 'none'; script-src 'self'; style-src
-    'self'; img-src 'self'; form-action 'none'; base-uri 'none'`.
+    policy free: `default-src 'none'; script-src 'self' 'unsafe-eval';
+    style-src 'self'; img-src 'self'; form-action 'none'; base-uri
+    'none'`. `'unsafe-eval'` is required, not optional — the DOM smoke
+    test caught this: Ajv compiles the schema into a validator via
+    `new Function` at runtime (`form.js`'s `ajv.compile`), which CSP
+    treats as eval, and ADR 001's no-build-step rule means there's no
+    way to ship a precompiled eval-free validator instead.
     (`frame-ancestors` doesn't work via meta; acceptable — the page has
     no authenticated or destructive actions to clickjack.)
 18. **CI supply-chain pinning** (`.github/workflows/ci.yml`). The just
@@ -289,6 +294,6 @@ change upstream; both repos carry the cross-repo instruction.
 - [x] H1 — Spec sync (cross-field rules ← upstream contract)
 - [x] H2 — Validation parity + warnings channel
 - [x] H3 — mailto encoding, other_reason, inline error mapping
-- [ ] H4 — Deploy prep (incl. security-audit hardening: CSP, CI pinning)
+- [x] H4 — Deploy prep (incl. security-audit hardening: CSP, CI pinning)
 - [ ] H5 — Contract-drift prevention (parity test, widened tripwire,
   cross-repo instructions)
