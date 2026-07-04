@@ -63,14 +63,17 @@ on the vendored copy being current.
 
 Core build (T0–T8) is done: the form collects the full intake, validates
 client-side against the vendored schema, and hands off via download +
-prefilled email. A pre-deploy review (`docs/spec/pre-deploy-hardening.md`)
-found and fixed contract-parity gaps, bugs, and error-surfacing UX (H1–H3),
-and H4 closed out deploy prep — `.nojekyll`, a post-merge CI trigger, a
+prefilled email. A pre-deploy review (`docs/spec/pre-deploy-hardening.md`,
+T10) found and fixed contract-parity gaps, bugs, and error-surfacing UX
+(H1–H3); H4 closed out deploy prep — `.nojekyll`, a post-merge CI trigger, a
 favicon and meta description, a CSP meta tag, SHA-pinned CI actions, and a
-success-screen note that the intake travels by ordinary email. Only H5
-(contract-drift prevention) and the human-only manual steps in
+success-screen note that the intake travels by ordinary email; H5 added
+contract-drift prevention (the stage-1 parity test, a widened
+`check-contract` tripwire, and cross-repo standing instructions). T10 is
+done. Only the human-only manual steps in
 [`docs/spec/webform.md`](docs/spec/webform.md) (org creation, transfer,
-enabling Pages, branch protection) remain before T9 deploy.
+enabling Pages, branch protection, the CI drift-check PAT) remain before T9
+deploy.
 The build plan, decisions, and progress checklist live in
 [`docs/spec/webform.md`](docs/spec/webform.md); design rationale is in
 [`docs/decisions/`](docs/decisions/).
