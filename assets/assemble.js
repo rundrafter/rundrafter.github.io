@@ -67,7 +67,7 @@ function daysBetween(aIso, bIso) {
   return (new Date(aIso) - new Date(bIso)) / 86_400_000;
 }
 
-// Cross-field product rules the schema can't express (see docs/spec/webform.md).
+// Cross-field product rules the schema can't express (see docs/architecture.md).
 // Mirrors run-drafter's stage 1 (validate.py / contracts.md) rule-for-rule.
 // Returns human-readable messages; an empty array means the rules all pass.
 function validateCrossField(formState) {
@@ -191,7 +191,7 @@ function validateCrossField(formState) {
   return errors;
 }
 
-// Non-blocking advisories (see docs/spec/webform.md's "Non-blocking" rules).
+// Non-blocking advisories (see docs/architecture.md's "Non-blocking" rules).
 function validateWarnings(formState) {
   const warnings = [];
   const goal = formState.goal ?? {};

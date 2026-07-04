@@ -1,6 +1,6 @@
 """Shared Playwright fixtures: a real browser serving the form over HTTP.
 
-See docs/spec/webform.md - tests drive the shipped index.html + assets in a
+See docs/architecture.md - tests drive the shipped index.html + assets in a
 real browser rather than reimplementing form logic in Python.
 """
 

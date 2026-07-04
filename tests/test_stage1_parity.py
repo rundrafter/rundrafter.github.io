@@ -1,13 +1,13 @@
 """Executable parity test against the real upstream stage-1 validator.
 
-Guards against the root cause of docs/spec/pre-deploy-hardening.md's finding
-A: run-drafter's `validate.py` cross-field rules drifting silently out of
-sync with their client-side re-implementation in assemble.js. Every intake
-this suite considers valid is piped through the real
+Guards against run-drafter's `validate.py` cross-field rules drifting
+silently out of sync with their client-side re-implementation in
+assemble.js (see docs/architecture.md's "Rules the schema can't express").
+Every intake this suite considers valid is piped through the real
 `rundrafter validate` CLI (sibling checkout) and must come back clean.
 
-Skipped when the sibling isn't checked out (e.g. CI, until the PAT from
-webform.md's manual step 8 exists) - see H5 in the hardening plan.
+Skipped when the sibling isn't checked out (e.g. CI, until there's a PAT
+scoped to the private upstream repo).
 """
 
 from __future__ import annotations

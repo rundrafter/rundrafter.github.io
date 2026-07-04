@@ -1,7 +1,7 @@
 """Email handoff suite (T6): mailto composition + the success screen.
 
 Drives the real handoff.js and index.html in a browser, per
-docs/spec/webform.md, so the same module the shipped page uses is under test.
+docs/architecture.md, so the same module the shipped page uses is under test.
 """
 
 from __future__ import annotations
