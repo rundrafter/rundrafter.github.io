@@ -199,6 +199,19 @@ function renderErrors(form, container, errors) {
   container.focus();
 }
 
+function renderWarnings(container, warnings) {
+  container.innerHTML = "";
+  if (warnings.length === 0) return;
+
+  const list = document.createElement("ul");
+  for (const warning of warnings) {
+    const item = document.createElement("li");
+    item.textContent = warning;
+    list.appendChild(item);
+  }
+  container.appendChild(list);
+}
+
 function showSuccessScreen(form, intake) {
   const successScreen = document.getElementById("success-screen");
   if (!successScreen) return;
@@ -217,8 +230,11 @@ function handleSubmit(event) {
 
   const form = event.currentTarget;
   const errorContainer = document.getElementById("form-errors");
+  const warningContainer = document.getElementById("form-warnings");
   const formState = gatherFormState(form);
-  const { intake, errors } = assemble(formState);
+  const { intake, errors, warnings } = assemble(formState);
+
+  renderWarnings(warningContainer, warnings);
 
   if (errors.length > 0) {
     renderErrors(form, errorContainer, errors);

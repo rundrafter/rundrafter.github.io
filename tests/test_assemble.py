@@ -103,13 +103,12 @@ def test_start_date_after_goal_date_blocks(page: Page) -> None:
     assert any("start date" in e.lower() for e in result["errors"])
 
 
-def test_start_date_equal_to_goal_date_passes(page: Page) -> None:
-    """A plan start date equal to the race date is allowed."""
+def test_start_date_equal_to_goal_date_blocks(page: Page) -> None:
+    """A plan start date equal to the race date blocks handoff (strict <)."""
     state = valid_state()
     state["goal"]["start_date"] = state["goal"]["date"]
     result = run_assemble(page, state)
-    assert result["errors"] == []
-    assert_schema_valid(result["intake"])
+    assert any("start date" in e.lower() for e in result["errors"])
 
 
 def test_b_race_on_or_after_goal_date_blocks(page: Page) -> None:
@@ -149,6 +148,141 @@ def test_other_event_on_or_after_goal_date_blocks(page: Page) -> None:
     ]
     result = run_assemble(page, state)
     assert any("other event" in e.lower() for e in result["errors"])
+
+
+def test_recent_result_after_start_date_blocks(page: Page) -> None:
+    """A recent-result date after the plan start date blocks handoff."""
+    state = valid_state()
+    state["recent_result"]["date"] = "2026-06-02"
+    result = run_assemble(page, state)
+    assert any("recent result" in e.lower() for e in result["errors"])
+
+
+def test_recent_result_equal_to_start_date_passes(page: Page) -> None:
+    """A recent-result date equal to the plan start date is allowed."""
+    state = valid_state()
+    state["recent_result"]["date"] = state["goal"]["start_date"]
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert_schema_valid(result["intake"])
+
+
+def test_b_race_on_start_date_blocks(page: Page) -> None:
+    """A B race on the plan start date blocks handoff (strictly-between rule)."""
+    state = valid_state()
+    state["b_races"] = [
+        {
+            "name": "Tune-up 10k",
+            "distance": "10k",
+            "date": state["goal"]["start_date"],
+        }
+    ]
+    result = run_assemble(page, state)
+    assert any("b race" in e.lower() for e in result["errors"])
+
+
+def test_other_event_before_start_date_blocks(page: Page) -> None:
+    """An other event before the plan start date blocks handoff."""
+    state = valid_state()
+    state["other_events"] = [
+        {"name": "Charity fun run", "distance": "5k", "date": "2026-01-01"}
+    ]
+    result = run_assemble(page, state)
+    assert any("other event" in e.lower() for e in result["errors"])
+
+
+def test_other_event_within_window_passes(page: Page) -> None:
+    """An other event strictly between start_date and goal.date is allowed."""
+    state = valid_state()
+    state["other_events"] = [
+        {"name": "Bridge to Brisbane", "distance": "10k", "date": "2026-08-16"}
+    ]
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert_schema_valid(result["intake"])
+
+
+def test_duplicate_event_dates_blocks(page: Page) -> None:
+    """A B race and an other event sharing a date blocks handoff."""
+    state = valid_state()
+    shared_date = "2026-08-16"
+    state["b_races"] = [
+        {"name": "Tune-up 10k", "distance": "10k", "date": shared_date}
+    ]
+    state["other_events"] = [
+        {"name": "Bridge to Brisbane", "distance": "10k", "date": shared_date}
+    ]
+    result = run_assemble(page, state)
+    assert any("shares a date" in e.lower() for e in result["errors"])
+
+
+def test_long_run_day_on_rest_day_blocks(page: Page) -> None:
+    """A long run day that's also a rest day blocks handoff."""
+    state = valid_state()
+    state["weekly_schedule"]["long_run_day"] = "Monday"
+    result = run_assemble(page, state)
+    assert any("long run day" in e.lower() for e in result["errors"])
+
+
+def test_long_run_day_off_rest_day_passes(page: Page) -> None:
+    """A long run day that isn't a rest day is allowed."""
+    result = run_assemble(page, valid_state())
+    assert result["errors"] == []
+    assert_schema_valid(result["intake"])
+
+
+def test_days_available_too_few_blocks(page: Page) -> None:
+    """Fewer than 3 running days available per week blocks handoff."""
+    state = valid_state()
+    state["weekly_schedule"]["days_available"] = 2
+    result = run_assemble(page, state)
+    assert any("3 running days" in e.lower() for e in result["errors"])
+
+
+def test_days_available_boundary_passes(page: Page) -> None:
+    """Exactly 3 running days available per week is allowed."""
+    state = valid_state()
+    state["weekly_schedule"]["days_available"] = 3
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert_schema_valid(result["intake"])
+
+
+def test_preferred_session_on_rest_day_blocks(page: Page) -> None:
+    """A preferred session scheduled on a rest day blocks handoff."""
+    state = valid_state()
+    state["weekly_schedule"]["preferred_sessions"] = [
+        {"day": "Monday", "description": "easy jog"}
+    ]
+    result = run_assemble(page, state)
+    assert any("preferred session" in e.lower() for e in result["errors"])
+
+
+def test_preferred_session_off_rest_day_passes(page: Page) -> None:
+    """A preferred session scheduled on a non-rest day is allowed."""
+    state = valid_state()
+    state["weekly_schedule"]["preferred_sessions"] = [
+        {"day": "Wednesday", "description": "intervals"}
+    ]
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert_schema_valid(result["intake"])
+
+
+def test_recent_result_stale_warns_without_blocking(page: Page) -> None:
+    """A recent result >6 months before start_date warns but still hands off."""
+    state = valid_state()
+    state["recent_result"]["date"] = "2025-11-01"
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert any("6 months" in w for w in result["warnings"])
+    assert_schema_valid(result["intake"])
+
+
+def test_valid_state_has_no_warnings(page: Page) -> None:
+    """A form-state within all thresholds produces no warnings."""
+    result = run_assemble(page, valid_state())
+    assert result["warnings"] == []
 
 
 def test_output_formats_required(page: Page) -> None:
