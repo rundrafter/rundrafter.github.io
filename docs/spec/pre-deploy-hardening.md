@@ -279,7 +279,7 @@ change upstream; both repos carry the cross-repo instruction.
 
 ## Progress
 
-- [ ] H1 — Spec sync (cross-field rules ← upstream contract)
+- [x] H1 — Spec sync (cross-field rules ← upstream contract)
 - [ ] H2 — Validation parity + warnings channel
 - [ ] H3 — mailto encoding, other_reason, inline error mapping
 - [ ] H4 — Deploy prep (incl. security-audit hardening: CSP, CI pinning)
