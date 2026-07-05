@@ -379,6 +379,47 @@ def test_valid_state_has_no_warnings(page: Page) -> None:
     assert result["warnings"] == []
 
 
+def test_five_unavailable_days_warns_without_blocking(page: Page) -> None:
+    """5+ fully-unticked days guarantee fewer than 3 trainable days - a
+    non-blocking advisory mirroring SCHEDULE_UNDER_CONSTRAINED."""
+    state = valid_state()
+    state["weekly_schedule"]["availability"] = {
+        day: {"morning": False, "evening": False}
+        for day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+    }
+    state["weekly_schedule"]["rest_days"] = [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+    ]
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert any("trainable" in w.lower() for w in result["warnings"])
+    assert_schema_valid(result["intake"])
+
+
+def test_four_unavailable_days_does_not_warn(page: Page) -> None:
+    """4 fully-unticked days still leaves 3 possibly-trainable days, so no
+    advisory fires - the threshold is 5, not 4."""
+    state = valid_state()
+    state["weekly_schedule"]["availability"] = {
+        day: {"morning": False, "evening": False}
+        for day in ["Monday", "Tuesday", "Wednesday", "Thursday"]
+    }
+    state["weekly_schedule"]["rest_days"] = [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+    ]
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert result["warnings"] == []
+    assert_schema_valid(result["intake"])
+
+
 def test_health_acknowledged_false_is_omitted(page: Page) -> None:
     """A hidden, unchecked health_acknowledged control still submits `false`
     (single checkbox); it should be dropped rather than emitted."""
