@@ -237,7 +237,6 @@ export function assemble(formState, { now } = {}) {
   const errors = validateCrossField(formState);
   const warnings = validateWarnings(formState);
 
-  const runner = pruneOptionalObject(formState.runner);
   const strengthCross = pruneStrengthCross(formState.strength_cross);
   const injuries = pruneRepeatingSection(formState.injuries);
   const bRaces = pruneRepeatingSection(formState.b_races);
@@ -250,7 +249,7 @@ export function assemble(formState, { now } = {}) {
   const intake = {
     meta: { schema_version: "1", submitted_at: timestamp },
     units: formState.units,
-    ...(runner && { runner }),
+    runner: omitEmpty(formState.runner ?? {}),
     goal: omitEmpty(formState.goal ?? {}),
     recent_result: omitEmpty(formState.recent_result ?? {}),
     current_fitness: omitEmpty(formState.current_fitness ?? {}),

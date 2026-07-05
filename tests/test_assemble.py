@@ -231,20 +231,16 @@ def test_long_run_day_off_rest_day_passes(page: Page) -> None:
     assert_schema_valid(result["intake"])
 
 
-def test_days_available_too_few_blocks(page: Page) -> None:
-    """Fewer than 3 running days available per week blocks handoff."""
-    state = valid_state()
-    state["weekly_schedule"]["days_available"] = 2
-    result = run_assemble(page, state)
-    assert any("3 running days" in e.lower() for e in result["errors"])
-
-
-def test_rest_days_empty_blocks(page: Page) -> None:
-    """No rest day selected blocks handoff with a friendly message."""
+def test_rest_days_empty_lets_rundrafter_decide(page: Page) -> None:
+    """An empty rest_days override is pruned entirely rather than emitted as
+    `[]` - the resolver picks rest days itself when the runner leaves this
+    override blank."""
     state = valid_state()
     state["weekly_schedule"]["rest_days"] = []
     result = run_assemble(page, state)
-    assert any("rest day" in e.lower() for e in result["errors"])
+    assert result["errors"] == []
+    assert "rest_days" not in result["intake"]["weekly_schedule"]
+    assert_schema_valid(result["intake"])
 
 
 def test_preferred_session_distance_without_effort_blocks(page: Page) -> None:
@@ -280,15 +276,6 @@ def test_preferred_session_with_both_distance_and_effort_passes(page: Page) -> N
             "effort": "easy",
         }
     ]
-    result = run_assemble(page, state)
-    assert result["errors"] == []
-    assert_schema_valid(result["intake"])
-
-
-def test_days_available_boundary_passes(page: Page) -> None:
-    """Exactly 3 running days available per week is allowed."""
-    state = valid_state()
-    state["weekly_schedule"]["days_available"] = 3
     result = run_assemble(page, state)
     assert result["errors"] == []
     assert_schema_valid(result["intake"])
@@ -355,12 +342,16 @@ def test_other_reason_filled_round_trips(page: Page) -> None:
     assert_schema_valid(result["intake"])
 
 
-def test_output_formats_required(page: Page) -> None:
-    """At least one output format must be selected."""
+def test_output_formats_omitted_lets_rundrafter_decide(page: Page) -> None:
+    """Leaving both output-format checkboxes unticked is no longer a
+    blocking error - the resolver defaults to both formats, so the whole
+    `output` section is pruned rather than emitted as `{"formats": []}`."""
     state = valid_state()
-    state["output"] = {"formats": [], "tracking": False}
+    state["output"] = {"formats": []}
     result = run_assemble(page, state)
-    assert any("output format" in e.lower() for e in result["errors"])
+    assert result["errors"] == []
+    assert "output" not in result["intake"]
+    assert_schema_valid(result["intake"])
 
 
 def test_timestamps_set_at_handoff(page: Page) -> None:
@@ -375,12 +366,13 @@ def test_blank_optional_sections_are_omitted(page: Page) -> None:
     result = run_assemble(page, valid_state())
     intake = result["intake"]
     for key in (
-        "runner",
         "strength_cross",
+        "preferences",
         "injuries",
         "b_races",
         "other_events",
         "notes",
+        "output",
     ):
         assert key not in intake
 
@@ -404,6 +396,9 @@ def test_golden_fixture_reproduces_intake_example(page: Page) -> None:
 
 def test_dom_smoke_fill_download_validates(page: Page) -> None:
     """Filling the real form and submitting downloads a schema-valid intake.json."""
+    page.fill("#runner-name", "Alex Smith")
+    page.select_option("#runner-experience", "experienced")
+
     page.fill("#goal-race", "Melbourne Marathon")
     page.select_option("#goal-distance", "marathon")
     page.fill("#goal-date", "2026-10-11")
@@ -417,7 +412,6 @@ def test_dom_smoke_fill_download_validates(page: Page) -> None:
     page.fill("#fitness-weekly-distance", "40")
     page.fill("#fitness-longest-run", "18")
 
-    page.fill("#schedule-days-available", "5")
     page.select_option("#schedule-long-run-day", "Sunday")
     page.check('input[name="weekly_schedule.rest_days"][value="Monday"]')
 
@@ -435,6 +429,9 @@ def test_empty_required_field_shows_inline_error(page: Page) -> None:
     """Submitting with a required field left blank (novalidate lets it reach
     Ajv) shows a `.field-error` right next to that field, not just a
     summary-only Ajv message."""
+    page.fill("#runner-name", "Alex Smith")
+    page.select_option("#runner-experience", "experienced")
+
     page.select_option("#goal-distance", "marathon")
     page.fill("#goal-date", "2026-10-11")
     page.fill("#goal-target-time", "3:45:00")
@@ -447,7 +444,6 @@ def test_empty_required_field_shows_inline_error(page: Page) -> None:
     page.fill("#fitness-weekly-distance", "40")
     page.fill("#fitness-longest-run", "18")
 
-    page.fill("#schedule-days-available", "5")
     page.select_option("#schedule-long-run-day", "Sunday")
     page.check('input[name="weekly_schedule.rest_days"][value="Monday"]')
 

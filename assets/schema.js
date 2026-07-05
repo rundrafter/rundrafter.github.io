@@ -6,16 +6,28 @@ export default {
   "required": [
     "meta",
     "units",
+    "runner",
     "goal",
     "recent_result",
     "current_fitness",
-    "weekly_schedule",
-    "preferences",
     "health_screen",
-    "consent",
-    "output"
+    "consent"
   ],
   "additionalProperties": false,
+  "$defs": {
+    "half_day_availability": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "morning": {
+          "type": "boolean"
+        },
+        "evening": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
   "properties": {
     "meta": {
       "type": "object",
@@ -43,17 +55,19 @@ export default {
     },
     "runner": {
       "type": "object",
+      "required": [
+        "name",
+        "experience"
+      ],
       "additionalProperties": false,
       "properties": {
         "name": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "age": {
           "type": "integer",
           "minimum": 0
-        },
-        "sex": {
-          "type": "string"
         },
         "experience": {
           "type": "string",
@@ -154,17 +168,34 @@ export default {
     },
     "weekly_schedule": {
       "type": "object",
-      "required": [
-        "days_available",
-        "long_run_day",
-        "rest_days"
-      ],
       "additionalProperties": false,
       "properties": {
-        "days_available": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 7
+        "availability": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "Monday": {
+              "$ref": "#/$defs/half_day_availability"
+            },
+            "Tuesday": {
+              "$ref": "#/$defs/half_day_availability"
+            },
+            "Wednesday": {
+              "$ref": "#/$defs/half_day_availability"
+            },
+            "Thursday": {
+              "$ref": "#/$defs/half_day_availability"
+            },
+            "Friday": {
+              "$ref": "#/$defs/half_day_availability"
+            },
+            "Saturday": {
+              "$ref": "#/$defs/half_day_availability"
+            },
+            "Sunday": {
+              "$ref": "#/$defs/half_day_availability"
+            }
+          }
         },
         "long_run_day": {
           "type": "string",
@@ -288,9 +319,6 @@ export default {
     },
     "preferences": {
       "type": "object",
-      "required": [
-        "calibrate_to"
-      ],
       "additionalProperties": false,
       "properties": {
         "calibrate_to": {
@@ -492,10 +520,6 @@ export default {
     },
     "output": {
       "type": "object",
-      "required": [
-        "formats",
-        "tracking"
-      ],
       "additionalProperties": false,
       "properties": {
         "formats": {
@@ -506,10 +530,9 @@ export default {
               "spreadsheet",
               "pdf"
             ]
-          }
-        },
-        "tracking": {
-          "type": "boolean"
+          },
+          "minItems": 1,
+          "uniqueItems": true
         }
       }
     }

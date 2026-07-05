@@ -89,6 +89,9 @@ def test_golden_fixture_passes_stage1(tmp_path: Path, page: Page) -> None:
 
 def test_dom_smoke_download_passes_stage1(tmp_path: Path, page: Page) -> None:
     """A real form fill-and-download clears the real stage-1 validator."""
+    page.fill("#runner-name", "Alex Smith")
+    page.select_option("#runner-experience", "experienced")
+
     page.fill("#goal-race", "Melbourne Marathon")
     page.select_option("#goal-distance", "marathon")
     page.fill("#goal-date", "2026-10-11")
@@ -102,7 +105,6 @@ def test_dom_smoke_download_passes_stage1(tmp_path: Path, page: Page) -> None:
     page.fill("#fitness-weekly-distance", "40")
     page.fill("#fitness-longest-run", "18")
 
-    page.fill("#schedule-days-available", "5")
     page.select_option("#schedule-long-run-day", "Sunday")
     page.check('input[name="weekly_schedule.rest_days"][value="Monday"]')
 

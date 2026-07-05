@@ -44,27 +44,32 @@ upstream wins and this doc is wrong — fix this doc.
 
 Summary of the intake object's top level (see the schema for exact types):
 
-| Section           | Required? | Notes                                                                                                    |
-| ----------------- | --------- | -------------------------------------------------------------------------------------------------------- |
-| `meta`            | system    | `schema_version: "1"`, `submitted_at` (ISO 8601) set at handoff time — not a form field                  |
-| `units`           | yes       | radio km/mi; controls distance labels, does **not** convert values                                       |
-| `runner`          | optional  | name, age, sex, experience                                                                               |
-| `goal`            | yes       | race, distance, date, target_time, start_date                                                            |
-| `recent_result`   | yes       | distance, time, date                                                                                     |
-| `current_fitness` | yes       | weekly_distance, longest_run, recent_peak_weekly (opt)                                                   |
-| `weekly_schedule` | yes       | days_available, long_run_day, rest_days (multi), preferred_sessions (repeating)                          |
-| `strength_cross`  | optional  | strength_per_week, strength_days, strength_type, warmup_jog, cross_training{type,frequency}              |
-| `preferences`     | yes       | calibrate_to (radio), build_mode (opt radio, default standard)                                           |
-| `injuries`        | optional  | repeating: area, status, notes                                                                           |
-| `health_screen`   | yes       | 8 PAR-Q booleans + other_reason (opt)                                                                    |
-| `consent`         | yes       | disclaimer_accepted (req), health_acknowledged (conditional), terms_accepted (opt), accepted_at (system) |
-| `b_races`         | optional  | repeating (≤3): name, distance, date, target_time                                                        |
-| `other_events`    | optional  | repeating: name, distance, date                                                                          |
-| `notes`           | optional  | other (textarea)                                                                                         |
-| `output`          | yes       | formats (checkboxes: spreadsheet/pdf), tracking (checkbox)                                               |
+| Section           | Required? | Notes                                                                                                                                                                                                                      |
+| ----------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `meta`            | system    | `schema_version: "1"`, `submitted_at` (ISO 8601) set at handoff time — not a form field                                                                                                                                    |
+| `units`           | yes       | radio km/mi; controls distance labels, does **not** convert values                                                                                                                                                         |
+| `runner`          | yes       | name (req), age (opt), experience (req) — no `sex` field                                                                                                                                                                   |
+| `goal`            | yes       | race, distance, date, target_time, start_date                                                                                                                                                                              |
+| `recent_result`   | yes       | distance, time, date                                                                                                                                                                                                       |
+| `current_fitness` | yes       | weekly_distance, longest_run, recent_peak_weekly (opt)                                                                                                                                                                     |
+| `weekly_schedule` | optional  | availability grid (morning/evening per weekday, all ticked by default), long_run_day (opt override), rest_days (opt override, multi), preferred_sessions (repeating) — absent entirely leaves the schedule to the resolver |
+| `strength_cross`  | optional  | strength_per_week, strength_days, strength_type, warmup_jog, cross_training{type,frequency}                                                                                                                                |
+| `preferences`     | optional  | calibrate_to (radio, default "Let RunDrafter decide"), build_mode (radio, default "Let RunDrafter decide")                                                                                                                 |
+| `injuries`        | optional  | repeating: area, status, notes                                                                                                                                                                                             |
+| `health_screen`   | yes       | 8 PAR-Q booleans + other_reason (opt)                                                                                                                                                                                      |
+| `consent`         | yes       | disclaimer_accepted (req), health_acknowledged (conditional), terms_accepted (opt), accepted_at (system)                                                                                                                   |
+| `b_races`         | optional  | repeating (≤3): name, distance, date, target_time                                                                                                                                                                          |
+| `other_events`    | optional  | repeating: name, distance, date                                                                                                                                                                                            |
+| `notes`           | optional  | other (textarea)                                                                                                                                                                                                           |
+| `output`          | optional  | formats (checkboxes: spreadsheet/pdf; both unticked = let RunDrafter decide) — `tracking` is gone, the spreadsheet always carries an Actual column                                                                         |
 
 `progress` exists in the schema for phase-3 re-planning and is **not**
 collected by this form.
+
+Every optional section above is sparse by construction: `assemble.js` omits
+it entirely rather than emitting an empty or partial object when the runner
+leaves it on "Let RunDrafter decide" (see `pruneWeeklySchedule` /
+`pruneOptionalObject` in `assets/assemble.js`).
 
 ---
 
@@ -96,23 +101,34 @@ accepts never bounces back from the pipeline.
     `goal.start_date` and `goal.date` (`DATE_OUT_OF_WINDOW`).
   - No two events, across `b_races` and `other_events` combined, share a date
     (`DUPLICATE_EVENT_DATE`).
-- **Schedule** (mirrors `_validate_schedule`):
+- **Schedule** (mirrors `_validate_schedule`, checked only against the
+  *explicit overrides* the runner gave — `days_available` isn't a raw-intake
+  field any more, so there's nothing to check pre-resolution):
   - `weekly_schedule.long_run_day` must not be in `rest_days`
     (`LONG_RUN_DAY_IS_REST`).
-  - `weekly_schedule.days_available ≥ 3` (`DAYS_AVAILABLE_TOO_FEW`).
   - No `preferred_sessions[].day` falls on a rest day
     (`PREFERRED_SESSION_ON_REST_DAY`).
-- **At least one output format.** `output.formats` must be non-empty.
+  - A `preferred_sessions[]` entry needs both `distance` and `effort` to
+    become an anchor session — one without the other blocks with a message
+    naming the row (schema-level `dependentRequired`, given a friendly
+    message here rather than a raw Ajv error).
 - **Timestamps.** Set `meta.submitted_at` and `consent.accepted_at`
   (ISO 8601) at the moment of handoff, not earlier.
+
+An empty `weekly_schedule.rest_days` override, or both `output.formats`
+checkboxes left unticked, are **not** errors — they're pruned to "absent"
+(see empty-object/array pruning above) and mean "let RunDrafter decide".
+Neither `weekly_schedule.days_available ≥ 3` nor a required `output.formats`
+are enforced here any more: the availability grid can't express a trainable-
+day count directly, so an under-constrained grid is instead a **resolver**-side
+warning (`SCHEDULE_UNDER_CONSTRAINED` in `validate.py`) this form can't check
+without running the resolver.
 
 ### Non-blocking (`warnings`)
 
 - **Stale recent result.** `recent_result.date` more than 183 days before
   `goal.start_date` (`RECENT_RESULT_OLD`) — VDOT-derived paces may not
   reflect current fitness.
-- **Advisory consistency.** `strength_days` / `rest_days` / `days_available`
-  "should be consistent" — surface a notice, don't block.
 
 Before changing any of these rules, or after any contract sync
 (`just sync-contract`), diff `assets/assemble.js` against the sibling
@@ -235,9 +251,8 @@ intercept downloads and `mailto:` navigation).
   into `assemble.js` in-page, assert the assembled object validates against
   the vendored schema (via Python's `jsonschema`, already a dependency), and
   assert each cross-field rule fires (pruning, health gate, disclaimer gate,
-  date ordering + event-window + duplicate-date + schedule rules, ≥1 output
-  format) and each warning fires (stale recent result, advisory
-  consistency).
+  date ordering + event-window + duplicate-date + schedule override rules,
+  anchor-session pairing) and each warning fires (stale recent result).
 - **Golden reproduction:** a fixture reproduces `schema/intake-example.json`'s
   structure from a plausible form-state, proving the form can emit the
   reference shape.
