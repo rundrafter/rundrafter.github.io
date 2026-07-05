@@ -112,6 +112,22 @@ function daysBetween(aIso, bIso) {
   return (new Date(aIso) - new Date(bIso)) / 86_400_000;
 }
 
+// Days whose grid has both halves unticked (see isDayFullyUnavailable) - never
+// a running day, regardless of what the resolver later decides.
+function getUnavailableDays(schedule) {
+  const availability = schedule.availability ?? {};
+  return DAY_NAMES.filter((day) => isDayFullyUnavailable(availability, day));
+}
+
+// A day the grid marks fully-unticked is never a running day, so 5 or more of
+// them out of 7 already leaves at most 2 possibly-trainable days - guaranteed
+// under the resolver's 3-day minimum (SCHEDULE_UNDER_CONSTRAINED in
+// validate.py) no matter which rest days it picks. This is the one case of
+// that resolver-side warning the grid can express without running the
+// resolver; a looser grid may still end up under-constrained once the
+// resolver adds rest days, but that isn't form-checkable.
+const MIN_TRAINABLE_DAYS = 3;
+
 // Cross-field product rules the schema can't express (see docs/architecture.md).
 // Mirrors rundrafter's stage 1 (validate.py / contracts.md) rule-for-rule.
 // Returns human-readable messages; an empty array means the rules all pass.
@@ -192,16 +208,15 @@ function validateCrossField(formState) {
   // days_available is no longer a raw-intake field (the resolver derives it
   // from the availability grid) and rest_days/long_run_day are optional
   // overrides now, so an unset grid/override is "let RunDrafter decide",
-  // not a validation failure. An under-constrained grid is a resolver-side
-  // warning (SCHEDULE_UNDER_CONSTRAINED in validate.py), not something this
-  // form can check without the resolver. Individual never-available days
-  // (both halves unticked), though, the grid can express directly, so
+  // not a validation failure. An under-constrained grid is generally a
+  // resolver-side warning (SCHEDULE_UNDER_CONSTRAINED in validate.py) this
+  // form can't check without the resolver - except the 5-or-more-unticked-days
+  // case handled as a warning below, which is guaranteed regardless of what
+  // the resolver decides. Individual never-available days (both halves
+  // unticked), though, the grid can express directly, so
   // overrides are checked against those below.
   const restDays = schedule.rest_days ?? [];
-  const availability = schedule.availability ?? {};
-  const unavailableDays = DAY_NAMES.filter((day) =>
-    isDayFullyUnavailable(availability, day),
-  );
+  const unavailableDays = getUnavailableDays(schedule);
 
   if (schedule.long_run_day && unavailableDays.includes(schedule.long_run_day)) {
     errors.push(
@@ -272,6 +287,7 @@ function validateWarnings(formState) {
   const warnings = [];
   const goal = formState.goal ?? {};
   const recentResult = formState.recent_result ?? {};
+  const schedule = formState.weekly_schedule ?? {};
 
   if (
     recentResult.date &&
@@ -280,6 +296,13 @@ function validateWarnings(formState) {
   ) {
     warnings.push(
       "Recent result date is more than 6 months before the plan start date — VDOT-derived paces may not reflect current fitness.",
+    );
+  }
+
+  const unavailableDayCount = getUnavailableDays(schedule).length;
+  if (DAY_NAMES.length - unavailableDayCount < MIN_TRAINABLE_DAYS) {
+    warnings.push(
+      `The availability grid leaves both halves unticked on ${unavailableDayCount} day(s) — at most ${DAY_NAMES.length - unavailableDayCount} day(s) a week can ever be trainable, short of the ${MIN_TRAINABLE_DAYS} recommended for a sane training week.`,
     );
   }
 

@@ -131,14 +131,21 @@ checkboxes left unticked, are **not** errors — they're pruned to "absent"
 Neither `weekly_schedule.days_available ≥ 3` nor a required `output.formats`
 are enforced here any more: the availability grid can't express a trainable-
 day count directly, so an under-constrained grid is instead a **resolver**-side
-warning (`SCHEDULE_UNDER_CONSTRAINED` in `validate.py`) this form can't check
-without running the resolver.
+warning (`SCHEDULE_UNDER_CONSTRAINED` in `validate.py`) this form generally
+can't check without running the resolver — except the over-constrained-grid
+case below, which is form-checkable.
 
 ### Non-blocking (`warnings`)
 
 - **Stale recent result.** `recent_result.date` more than 183 days before
   `goal.start_date` (`RECENT_RESULT_OLD`) — VDOT-derived paces may not
   reflect current fitness.
+- **Over-constrained availability grid.** 5 or more days with both halves
+  unticked leaves at most 2 possibly-trainable days a week, guaranteeing
+  fewer than the resolver's 3-day minimum no matter which rest days it picks
+  (mirrors `SCHEDULE_UNDER_CONSTRAINED` in `validate.py`, warning-level parity
+  only — a looser grid may still end up under-constrained once the resolver
+  adds rest days, but that isn't form-checkable).
 
 Before changing any of these rules, or after any contract sync
 (`just sync-contract`), diff `assets/assemble.js` against the sibling
