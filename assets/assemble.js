@@ -1,3 +1,21 @@
+const DAY_NAMES = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
+
+// A day whose grid has both halves unticked is never a running day (mirrors
+// resolve.py's _both_halves_unticked); an absent day or half defaults to
+// available, matching the schema default.
+function isDayFullyUnavailable(availability, day) {
+  const halves = availability?.[day] ?? {};
+  return halves.morning === false && halves.evening === false;
+}
+
 function omitEmpty(obj) {
   const result = {};
   for (const [key, value] of Object.entries(obj)) {
@@ -176,8 +194,31 @@ function validateCrossField(formState) {
   // overrides now, so an unset grid/override is "let RunDrafter decide",
   // not a validation failure. An under-constrained grid is a resolver-side
   // warning (SCHEDULE_UNDER_CONSTRAINED in validate.py), not something this
-  // form can check without the resolver.
+  // form can check without the resolver. Individual never-available days
+  // (both halves unticked), though, the grid can express directly, so
+  // overrides are checked against those below.
   const restDays = schedule.rest_days ?? [];
+  const availability = schedule.availability ?? {};
+  const unavailableDays = DAY_NAMES.filter((day) =>
+    isDayFullyUnavailable(availability, day),
+  );
+
+  if (schedule.long_run_day && unavailableDays.includes(schedule.long_run_day)) {
+    errors.push(
+      `Long run day (${schedule.long_run_day}) has both halves unticked in the availability grid.`,
+    );
+  }
+
+  if (restDays.length > 0) {
+    const restDaysMissingUnavailable = unavailableDays.filter(
+      (day) => !restDays.includes(day),
+    );
+    if (restDaysMissingUnavailable.length > 0) {
+      errors.push(
+        `Rest days must include ${restDaysMissingUnavailable.join(", ")}: both halves are unticked in the availability grid.`,
+      );
+    }
+  }
 
   const preferredOnRestDay = [
     ...new Set(
@@ -189,6 +230,19 @@ function validateCrossField(formState) {
   if (preferredOnRestDay.length > 0) {
     errors.push(
       `Preferred session day(s) ${preferredOnRestDay.join(", ")} fall on a rest day.`,
+    );
+  }
+
+  const preferredOnUnavailableDay = [
+    ...new Set(
+      (schedule.preferred_sessions ?? [])
+        .map((session) => session?.day)
+        .filter((day) => day && unavailableDays.includes(day)),
+    ),
+  ];
+  if (preferredOnUnavailableDay.length > 0) {
+    errors.push(
+      `Preferred session day(s) ${preferredOnUnavailableDay.join(", ")} have both halves unticked in the availability grid.`,
     );
   }
 
