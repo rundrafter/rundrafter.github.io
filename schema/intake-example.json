@@ -7,7 +7,6 @@
   "runner": {
     "name": "Alex Smith",
     "age": 38,
-    "sex": "M",
     "experience": "experienced"
   },
   "goal": {
@@ -28,9 +27,11 @@
     "recent_peak_weekly": 50
   },
   "weekly_schedule": {
-    "days_available": 5,
+    "availability": {
+      "Tuesday": {"morning": false},
+      "Thursday": {"morning": false}
+    },
     "long_run_day": "Sunday",
-    "rest_days": ["Monday", "Friday"],
     "preferred_sessions": [
       {"day": "Tuesday", "description": "intervals with running club"},
       {"day": "Saturday", "description": "parkrun", "distance": 5, "effort": "threshold"}
@@ -41,10 +42,6 @@
     "strength_days": ["Wednesday", "Friday"],
     "strength_type": "gym weights and core",
     "warmup_jog": false
-  },
-  "preferences": {
-    "calibrate_to": "current",
-    "build_mode": "standard"
   },
   "injuries": [
     {
@@ -84,9 +81,5 @@
   ],
   "notes": {
     "other": ""
-  },
-  "output": {
-    "formats": ["spreadsheet", "pdf"],
-    "tracking": true
   }
 }

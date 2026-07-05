@@ -81,6 +81,9 @@ def test_mailto_subject_falls_back_without_runner_name(page: Page) -> None:
 def test_success_screen_after_valid_submission(page: Page) -> None:
     """A valid submission shows the success screen with a prefilled mailto,
     the plain-text return address, and a working download-again link."""
+    page.fill("#runner-name", "Alex Smith")
+    page.select_option("#runner-experience", "experienced")
+
     page.fill("#goal-race", "Melbourne Marathon")
     page.select_option("#goal-distance", "marathon")
     page.fill("#goal-date", "2026-10-11")
@@ -94,7 +97,6 @@ def test_success_screen_after_valid_submission(page: Page) -> None:
     page.fill("#fitness-weekly-distance", "40")
     page.fill("#fitness-longest-run", "18")
 
-    page.fill("#schedule-days-available", "5")
     page.select_option("#schedule-long-run-day", "Sunday")
     page.check('input[name="weekly_schedule.rest_days"][value="Monday"]')
 

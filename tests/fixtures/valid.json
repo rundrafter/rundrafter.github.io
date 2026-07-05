@@ -1,5 +1,9 @@
 {
   "units": "km",
+  "runner": {
+    "name": "Test Runner",
+    "experience": "experienced"
+  },
   "goal": {
     "race": "Melbourne Marathon",
     "distance": "marathon",
@@ -14,11 +18,9 @@
   },
   "current_fitness": { "weekly_distance": 40, "longest_run": 18 },
   "weekly_schedule": {
-    "days_available": 5,
     "long_run_day": "Sunday",
     "rest_days": ["Monday"]
   },
-  "preferences": { "calibrate_to": "current" },
   "health_screen": {
     "heart_condition": false,
     "chest_pain_activity": false,
@@ -29,6 +31,5 @@
     "pregnancy": false,
     "recent_surgery_illness": false
   },
-  "consent": { "disclaimer_accepted": true },
-  "output": { "formats": ["spreadsheet"], "tracking": false }
+  "consent": { "disclaimer_accepted": true }
 }

@@ -27,479 +27,543 @@
       <h1>RunDrafter intake</h1>
       <form id="intake-form" novalidate>
         <section aria-labelledby="units-heading">
-          <h2 id="units-heading">Units</h2>
+          <h3 id="units-heading">Units</h3>
           <label><input type="radio" name="units" value="km" checked /> Kilometres</label>
           <label><input type="radio" name="units" value="mi" /> Miles</label>
         </section>
 
-        <section aria-labelledby="runner-heading">
-          <h2 id="runner-heading">Runner</h2>
-          <p>Optional - recorded as context for the plan generator.</p>
-          <label for="runner-name">Name</label>
-          <input id="runner-name" name="runner.name" type="text" />
+        <div class="stage" aria-labelledby="stage-1-heading">
+          <h2 id="stage-1-heading">Stage 1 &mdash; About the runner</h2>
 
-          <label for="runner-age">Age</label>
-          <input id="runner-age" name="runner.age" type="number" min="0" step="1" />
+          <section aria-labelledby="runner-heading">
+            <h3 id="runner-heading">Runner</h3>
+            <label for="runner-name">Name</label>
+            <input id="runner-name" name="runner.name" type="text" required />
 
-          <label for="runner-sex">Sex</label>
-          <input id="runner-sex" name="runner.sex" type="text" />
+            <label for="runner-age">Age (optional)</label>
+            <input id="runner-age" name="runner.age" type="number" min="0" step="1" />
 
-          <label for="runner-experience">Running experience</label>
-          <select id="runner-experience" name="runner.experience">
-            <option value=""></option>
-            <option value="new">New to running (less than 1 year)</option>
-            <option value="returning">Returning after a break</option>
-            <option value="experienced">Regular runner (1+ years consistent training)</option>
-          </select>
-        </section>
+            <label for="runner-experience">Running experience</label>
+            <select id="runner-experience" name="runner.experience" required>
+              <option value=""></option>
+              <option value="new">New to running (less than 1 year)</option>
+              <option value="returning">Returning after a break</option>
+              <option value="experienced">Regular runner (1+ years consistent training)</option>
+            </select>
+          </section>
 
-        <section aria-labelledby="goal-heading">
-          <h2 id="goal-heading">Goal</h2>
-          <label for="goal-race">Race</label>
-          <input id="goal-race" name="goal.race" type="text" required />
+          <section aria-labelledby="recent-result-heading">
+            <h3 id="recent-result-heading">Recent result</h3>
+            <label for="recent-result-distance">Distance</label>
+            <select id="recent-result-distance" name="recent_result.distance" required>
+              <option value="5k">5 km race</option>
+              <option value="10k">10 km race</option>
+              <option value="half">Half marathon</option>
+              <option value="marathon">Marathon</option>
+            </select>
 
-          <label for="goal-distance">Distance</label>
-          <select id="goal-distance" name="goal.distance" required>
-            <option value="5k">5 km</option>
-            <option value="10k">10 km</option>
-            <option value="half">Half marathon</option>
-            <option value="marathon">Marathon</option>
-          </select>
+            <label for="recent-result-time">Time (M:SS or H:MM:SS)</label>
+            <input id="recent-result-time" name="recent_result.time" type="text" required />
 
-          <label for="goal-date">Race date</label>
-          <input id="goal-date" name="goal.date" type="date" required />
+            <label for="recent-result-date">Date</label>
+            <input id="recent-result-date" name="recent_result.date" type="date" required />
+          </section>
 
-          <label for="goal-target-time">Target time (H:MM:SS, or "finish")</label>
-          <input id="goal-target-time" name="goal.target_time" type="text" required />
+          <section aria-labelledby="fitness-heading">
+            <h3 id="fitness-heading">Current fitness</h3>
+            <label for="fitness-weekly-distance">
+              Typical weekly distance (<span data-unit-label>km</span>)
+            </label>
+            <input
+              id="fitness-weekly-distance"
+              name="current_fitness.weekly_distance"
+              type="number"
+              min="0"
+              step="any"
+              required
+            />
 
-          <label for="goal-start-date">Plan start date</label>
-          <input id="goal-start-date" name="goal.start_date" type="date" required />
-        </section>
+            <label for="fitness-longest-run">
+              Longest run in the last 4-6 weeks (<span data-unit-label>km</span>)
+            </label>
+            <input
+              id="fitness-longest-run"
+              name="current_fitness.longest_run"
+              type="number"
+              min="0"
+              step="any"
+              required
+            />
 
-        <section aria-labelledby="recent-result-heading">
-          <h2 id="recent-result-heading">Recent result</h2>
-          <label for="recent-result-distance">Distance</label>
-          <select id="recent-result-distance" name="recent_result.distance" required>
-            <option value="5k">5 km race</option>
-            <option value="10k">10 km race</option>
-            <option value="half">Half marathon</option>
-            <option value="marathon">Marathon</option>
-          </select>
+            <label for="fitness-recent-peak-weekly">
+              Highest weekly distance in the last 6 months (<span data-unit-label>km</span>, optional)
+            </label>
+            <input
+              id="fitness-recent-peak-weekly"
+              name="current_fitness.recent_peak_weekly"
+              type="number"
+              min="0"
+              step="any"
+            />
+          </section>
 
-          <label for="recent-result-time">Time (M:SS or H:MM:SS)</label>
-          <input id="recent-result-time" name="recent_result.time" type="text" required />
-
-          <label for="recent-result-date">Date</label>
-          <input id="recent-result-date" name="recent_result.date" type="date" required />
-        </section>
-
-        <section aria-labelledby="fitness-heading">
-          <h2 id="fitness-heading">Current fitness</h2>
-          <label for="fitness-weekly-distance">
-            Typical weekly distance (<span data-unit-label>km</span>)
-          </label>
-          <input
-            id="fitness-weekly-distance"
-            name="current_fitness.weekly_distance"
-            type="number"
-            min="0"
-            step="any"
-            required
-          />
-
-          <label for="fitness-longest-run">
-            Longest run in the last 4-6 weeks (<span data-unit-label>km</span>)
-          </label>
-          <input
-            id="fitness-longest-run"
-            name="current_fitness.longest_run"
-            type="number"
-            min="0"
-            step="any"
-            required
-          />
-
-          <label for="fitness-recent-peak-weekly">
-            Highest weekly distance in the last 6 months (<span data-unit-label>km</span>, optional)
-          </label>
-          <input
-            id="fitness-recent-peak-weekly"
-            name="current_fitness.recent_peak_weekly"
-            type="number"
-            min="0"
-            step="any"
-          />
-        </section>
-
-        <section aria-labelledby="schedule-heading">
-          <h2 id="schedule-heading">Weekly schedule</h2>
-          <label for="schedule-days-available">Days available per week</label>
-          <input
-            id="schedule-days-available"
-            name="weekly_schedule.days_available"
-            type="number"
-            min="3"
-            max="7"
-            required
-          />
-
-          <label for="schedule-long-run-day">Long run day</label>
-          <select id="schedule-long-run-day" name="weekly_schedule.long_run_day" required>
-            <option value="Monday">Monday</option>
-            <option value="Tuesday">Tuesday</option>
-            <option value="Wednesday">Wednesday</option>
-            <option value="Thursday">Thursday</option>
-            <option value="Friday">Friday</option>
-            <option value="Saturday">Saturday</option>
-            <option value="Sunday">Sunday</option>
-          </select>
-
-          <fieldset>
-            <legend>Rest days</legend>
-            <label><input type="checkbox" name="weekly_schedule.rest_days" value="Monday" /> Monday</label>
-            <label><input type="checkbox" name="weekly_schedule.rest_days" value="Tuesday" /> Tuesday</label>
-            <label><input type="checkbox" name="weekly_schedule.rest_days" value="Wednesday" /> Wednesday</label>
-            <label><input type="checkbox" name="weekly_schedule.rest_days" value="Thursday" /> Thursday</label>
-            <label><input type="checkbox" name="weekly_schedule.rest_days" value="Friday" /> Friday</label>
-            <label><input type="checkbox" name="weekly_schedule.rest_days" value="Saturday" /> Saturday</label>
-            <label><input type="checkbox" name="weekly_schedule.rest_days" value="Sunday" /> Sunday</label>
-          </fieldset>
-
-          <fieldset>
-            <legend>Preferred sessions</legend>
+          <section aria-labelledby="health-heading">
+            <h3 id="health-heading">Health screen</h3>
             <p>
-              Recurring running sessions the plan should schedule around, e.g.
-              a weekly parkrun or a club run. Fill in both distance and effort
-              to make an entry an anchor session - a fixed-distance,
-              fixed-effort commitment the plan eases off before races, late
-              in the taper, or under injury caution.
+              Answer honestly - these questions flag when medical clearance is a
+              good idea before starting a training programme.
             </p>
-            <div id="preferred-sessions-list"></div>
-            <button type="button" id="add-preferred-session">Add preferred session</button>
-          </fieldset>
-        </section>
-
-        <template id="preferred-session-template">
-          <fieldset class="repeating-row">
-            <legend>Preferred session</legend>
             <label>
-              Day
-              <select name="weekly_schedule.preferred_sessions.__INDEX__.day" required>
-                <option value="Monday">Monday</option>
-                <option value="Tuesday">Tuesday</option>
-                <option value="Wednesday">Wednesday</option>
-                <option value="Thursday">Thursday</option>
-                <option value="Friday">Friday</option>
-                <option value="Saturday">Saturday</option>
-                <option value="Sunday">Sunday</option>
-              </select>
+              <input type="checkbox" name="health_screen.heart_condition" />
+              Have you ever been told you have a heart condition or had a stroke?
             </label>
             <label>
-              Description
-              <input
-                type="text"
-                name="weekly_schedule.preferred_sessions.__INDEX__.description"
-                placeholder="e.g. club run"
-                required
-              />
+              <input type="checkbox" name="health_screen.chest_pain_activity" />
+              Do you experience chest pain or pressure during physical activity?
             </label>
             <label>
-              Distance (<span data-unit-label>km</span>, optional)
-              <input
-                type="number"
-                name="weekly_schedule.preferred_sessions.__INDEX__.distance"
-                min="0"
-                step="any"
-              />
+              <input type="checkbox" name="health_screen.chest_pain_rest" />
+              Have you had chest pain or pressure at rest in the last month?
             </label>
             <label>
-              Effort (optional)
-              <select name="weekly_schedule.preferred_sessions.__INDEX__.effort">
-                <option value=""></option>
-                <option value="easy">Easy</option>
-                <option value="threshold">Threshold</option>
-              </select>
-            </label>
-            <p class="help-text">
-              Fill in both distance and effort to turn this into a scheduled
-              anchor session.
-            </p>
-            <button type="button" data-remove-row>Remove</button>
-          </fieldset>
-        </template>
-
-        <section aria-labelledby="strength-heading">
-          <h2 id="strength-heading">Strength and cross-training</h2>
-          <p>Optional - describes non-running training you already do.</p>
-          <label for="strength-per-week">Strength sessions per week</label>
-          <input id="strength-per-week" name="strength_cross.strength_per_week" type="number" min="0" step="1" />
-
-          <fieldset>
-            <legend>Strength session days</legend>
-            <label><input type="checkbox" name="strength_cross.strength_days" value="Monday" /> Monday</label>
-            <label><input type="checkbox" name="strength_cross.strength_days" value="Tuesday" /> Tuesday</label>
-            <label><input type="checkbox" name="strength_cross.strength_days" value="Wednesday" /> Wednesday</label>
-            <label><input type="checkbox" name="strength_cross.strength_days" value="Thursday" /> Thursday</label>
-            <label><input type="checkbox" name="strength_cross.strength_days" value="Friday" /> Friday</label>
-            <label><input type="checkbox" name="strength_cross.strength_days" value="Saturday" /> Saturday</label>
-            <label><input type="checkbox" name="strength_cross.strength_days" value="Sunday" /> Sunday</label>
-          </fieldset>
-
-          <label for="strength-type">Strength work description</label>
-          <input
-            id="strength-type"
-            name="strength_cross.strength_type"
-            type="text"
-            placeholder="e.g. gym weights and core"
-          />
-
-          <label>
-            <input type="checkbox" name="strength_cross.warmup_jog" />
-            I do a warm-up jog before strength sessions
-          </label>
-
-          <fieldset>
-            <legend>Cross-training (optional)</legend>
-            <label for="cross-training-type">Type</label>
-            <input
-              id="cross-training-type"
-              name="strength_cross.cross_training.type"
-              type="text"
-              placeholder="e.g. cycling, swimming"
-            />
-
-            <label for="cross-training-frequency">Frequency</label>
-            <input
-              id="cross-training-frequency"
-              name="strength_cross.cross_training.frequency"
-              type="text"
-              placeholder="e.g. once a week"
-            />
-          </fieldset>
-        </section>
-
-        <section aria-labelledby="preferences-heading">
-          <h2 id="preferences-heading">Preferences</h2>
-          <fieldset>
-            <legend>Calibrate training paces to</legend>
-            <label>
-              <input type="radio" name="preferences.calibrate_to" value="current" checked />
-              Current fitness
+              <input type="checkbox" name="health_screen.dizziness_balance" />
+              Do you lose balance from dizziness, or lose consciousness?
             </label>
             <label>
-              <input type="radio" name="preferences.calibrate_to" value="goal" />
-              Goal pace
+              <input type="checkbox" name="health_screen.bone_joint_problem" />
+              Do you have a bone, joint, or soft-tissue problem that is made
+              worse by physical activity?
             </label>
-          </fieldset>
+            <label>
+              <input type="checkbox" name="health_screen.bp_or_heart_meds" />
+              Are you currently taking medication for blood pressure or a heart
+              condition?
+            </label>
+            <label>
+              <input type="checkbox" name="health_screen.pregnancy" />
+              Are you pregnant or have you given birth in the last 3 months?
+            </label>
+            <label>
+              <input type="checkbox" name="health_screen.recent_surgery_illness" />
+              Have you had surgery or a serious illness in the last 3 months?
+            </label>
 
-          <fieldset>
-            <legend>Build mode</legend>
-            <label>
-              <input type="radio" name="preferences.build_mode" value="standard" checked />
-              Standard build
+            <label for="health-other-reason">
+              Any other reason you feel you should not begin an exercise
+              programme? (optional)
             </label>
-            <label>
-              <input type="radio" name="preferences.build_mode" value="cautious" />
-              Cautious build (reduced ramp, more recovery)
-            </label>
-          </fieldset>
-        </section>
+            <input id="health-other-reason" name="health_screen.other_reason" type="text" />
+          </section>
 
-        <section aria-labelledby="injuries-heading">
-          <h2 id="injuries-heading">Injuries</h2>
-          <p>Optional - current, recent, or historical injuries.</p>
-          <div id="injuries-list"></div>
-          <button type="button" id="add-injury">Add injury</button>
-        </section>
+          <section aria-labelledby="consent-heading">
+            <h3 id="consent-heading">Consent</h3>
+            <label>
+              <input type="checkbox" name="consent.disclaimer_accepted" required />
+              I have read and accept the disclaimer: this is training guidance,
+              not medical advice. See a professional for pain or injury.
+            </label>
 
-        <template id="injury-template">
-          <fieldset class="repeating-row">
-            <legend>Injury</legend>
-            <label>
-              Area
-              <input
-                type="text"
-                name="injuries.__INDEX__.area"
-                placeholder="e.g. left achilles"
-                required
-              />
-            </label>
-            <label>
-              Status
-              <select name="injuries.__INDEX__.status" required>
-                <option value="current">Active now - limiting training</option>
-                <option value="recent">Resolved in the last 1-3 months</option>
-                <option value="historical">Old injury, worth noting as a risk area</option>
-              </select>
-            </label>
-            <label>
-              Notes (optional)
-              <input type="text" name="injuries.__INDEX__.notes" />
-            </label>
-            <button type="button" data-remove-row>Remove</button>
-          </fieldset>
-        </template>
+            <div id="health-acknowledgement" hidden>
+              <p>
+                You answered yes to one or more health-screen questions above.
+                Please check with a doctor before starting a training programme.
+              </p>
+              <label>
+                <input type="checkbox" name="consent.health_acknowledged" />
+                I understand the health-screen guidance above and want to
+                continue anyway.
+              </label>
+            </div>
+          </section>
+        </div>
 
-        <section aria-labelledby="health-heading">
-          <h2 id="health-heading">Health screen</h2>
+        <div class="stage" aria-labelledby="stage-2-heading">
+          <h2 id="stage-2-heading">Stage 2 &mdash; Goals</h2>
+
+          <section aria-labelledby="goal-heading">
+            <h3 id="goal-heading">Goal</h3>
+            <label for="goal-race">Race</label>
+            <input id="goal-race" name="goal.race" type="text" required />
+
+            <label for="goal-distance">Distance</label>
+            <select id="goal-distance" name="goal.distance" required>
+              <option value="5k">5 km</option>
+              <option value="10k">10 km</option>
+              <option value="half">Half marathon</option>
+              <option value="marathon">Marathon</option>
+            </select>
+
+            <label for="goal-date">Race date</label>
+            <input id="goal-date" name="goal.date" type="date" required />
+
+            <label for="goal-target-time">Target time (H:MM:SS, or "finish")</label>
+            <input id="goal-target-time" name="goal.target_time" type="text" required />
+
+            <label for="goal-start-date">Plan start date</label>
+            <input id="goal-start-date" name="goal.start_date" type="date" required />
+          </section>
+
+          <section aria-labelledby="b-races-heading">
+            <h3 id="b-races-heading">B races</h3>
+            <p>Optional - secondary goal races, up to three.</p>
+            <div id="b-races-list"></div>
+            <button type="button" id="add-b-race">Add B race</button>
+          </section>
+
+          <template id="b-race-template">
+            <fieldset class="repeating-row">
+              <legend>B race</legend>
+              <label>
+                Name
+                <input type="text" name="b_races.__INDEX__.name" required />
+              </label>
+              <label>
+                Distance
+                <select name="b_races.__INDEX__.distance" required>
+                  <option value="5k">5 km</option>
+                  <option value="10k">10 km</option>
+                  <option value="half">Half marathon</option>
+                  <option value="marathon">Marathon</option>
+                </select>
+              </label>
+              <label>
+                Date
+                <input type="date" name="b_races.__INDEX__.date" required />
+              </label>
+              <label>
+                Target time (H:MM:SS, optional)
+                <input type="text" name="b_races.__INDEX__.target_time" />
+              </label>
+              <button type="button" data-remove-row>Remove</button>
+            </fieldset>
+          </template>
+
+          <section aria-labelledby="other-events-heading">
+            <h3 id="other-events-heading">Other events</h3>
+            <p>Optional - events you'll take part in but not race.</p>
+            <div id="other-events-list"></div>
+            <button type="button" id="add-other-event">Add other event</button>
+          </section>
+
+          <template id="other-event-template">
+            <fieldset class="repeating-row">
+              <legend>Other event</legend>
+              <label>
+                Name
+                <input type="text" name="other_events.__INDEX__.name" required />
+              </label>
+              <label>
+                Distance
+                <select name="other_events.__INDEX__.distance" required>
+                  <option value="5k">5 km</option>
+                  <option value="10k">10 km</option>
+                  <option value="half">Half marathon</option>
+                  <option value="marathon">Marathon</option>
+                </select>
+              </label>
+              <label>
+                Date
+                <input type="date" name="other_events.__INDEX__.date" required />
+              </label>
+              <button type="button" data-remove-row>Remove</button>
+            </fieldset>
+          </template>
+        </div>
+
+        <div class="stage" aria-labelledby="stage-3-heading">
+          <h2 id="stage-3-heading">Stage 3 &mdash; Restrictions</h2>
           <p>
-            Answer honestly - these questions flag when medical clearance is a
-            good idea before starting a training programme.
+            Everything below is optional. Leave a field alone and RunDrafter
+            decides for you - override only what you have a genuine
+            preference about.
           </p>
-          <label>
-            <input type="checkbox" name="health_screen.heart_condition" />
-            Have you ever been told you have a heart condition or had a stroke?
-          </label>
-          <label>
-            <input type="checkbox" name="health_screen.chest_pain_activity" />
-            Do you experience chest pain or pressure during physical activity?
-          </label>
-          <label>
-            <input type="checkbox" name="health_screen.chest_pain_rest" />
-            Have you had chest pain or pressure at rest in the last month?
-          </label>
-          <label>
-            <input type="checkbox" name="health_screen.dizziness_balance" />
-            Do you lose balance from dizziness, or lose consciousness?
-          </label>
-          <label>
-            <input type="checkbox" name="health_screen.bone_joint_problem" />
-            Do you have a bone, joint, or soft-tissue problem that is made
-            worse by physical activity?
-          </label>
-          <label>
-            <input type="checkbox" name="health_screen.bp_or_heart_meds" />
-            Are you currently taking medication for blood pressure or a heart
-            condition?
-          </label>
-          <label>
-            <input type="checkbox" name="health_screen.pregnancy" />
-            Are you pregnant or have you given birth in the last 3 months?
-          </label>
-          <label>
-            <input type="checkbox" name="health_screen.recent_surgery_illness" />
-            Have you had surgery or a serious illness in the last 3 months?
-          </label>
 
-          <label for="health-other-reason">
-            Any other reason you feel you should not begin an exercise
-            programme? (optional)
-          </label>
-          <input id="health-other-reason" name="health_screen.other_reason" type="text" />
-        </section>
+          <section aria-labelledby="schedule-heading">
+            <h3 id="schedule-heading">Weekly schedule</h3>
 
-        <section aria-labelledby="consent-heading">
-          <h2 id="consent-heading">Consent</h2>
-          <label>
-            <input type="checkbox" name="consent.disclaimer_accepted" required />
-            I have read and accept the disclaimer: this is training guidance,
-            not medical advice. See a professional for pain or injury.
-          </label>
+            <fieldset>
+              <legend>Availability</legend>
+              <p>
+                All half-days start ticked. Untick the ones you're
+                <strong>not</strong> available to run.
+              </p>
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Day</th>
+                    <th scope="col">Morning</th>
+                    <th scope="col">Evening</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row">Monday</th>
+                    <td><input type="checkbox" name="weekly_schedule.availability.Monday.morning" aria-label="Monday morning" checked /></td>
+                    <td><input type="checkbox" name="weekly_schedule.availability.Monday.evening" aria-label="Monday evening" checked /></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Tuesday</th>
+                    <td><input type="checkbox" name="weekly_schedule.availability.Tuesday.morning" aria-label="Tuesday morning" checked /></td>
+                    <td><input type="checkbox" name="weekly_schedule.availability.Tuesday.evening" aria-label="Tuesday evening" checked /></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Wednesday</th>
+                    <td><input type="checkbox" name="weekly_schedule.availability.Wednesday.morning" aria-label="Wednesday morning" checked /></td>
+                    <td><input type="checkbox" name="weekly_schedule.availability.Wednesday.evening" aria-label="Wednesday evening" checked /></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Thursday</th>
+                    <td><input type="checkbox" name="weekly_schedule.availability.Thursday.morning" aria-label="Thursday morning" checked /></td>
+                    <td><input type="checkbox" name="weekly_schedule.availability.Thursday.evening" aria-label="Thursday evening" checked /></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Friday</th>
+                    <td><input type="checkbox" name="weekly_schedule.availability.Friday.morning" aria-label="Friday morning" checked /></td>
+                    <td><input type="checkbox" name="weekly_schedule.availability.Friday.evening" aria-label="Friday evening" checked /></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Saturday</th>
+                    <td><input type="checkbox" name="weekly_schedule.availability.Saturday.morning" aria-label="Saturday morning" checked /></td>
+                    <td><input type="checkbox" name="weekly_schedule.availability.Saturday.evening" aria-label="Saturday evening" checked /></td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Sunday</th>
+                    <td><input type="checkbox" name="weekly_schedule.availability.Sunday.morning" aria-label="Sunday morning" checked /></td>
+                    <td><input type="checkbox" name="weekly_schedule.availability.Sunday.evening" aria-label="Sunday evening" checked /></td>
+                  </tr>
+                </tbody>
+              </table>
+            </fieldset>
 
-          <div id="health-acknowledgement" hidden>
-            <p>
-              You answered yes to one or more health-screen questions above.
-              Please check with a doctor before starting a training programme.
-            </p>
-            <label>
-              <input type="checkbox" name="consent.health_acknowledged" />
-              I understand the health-screen guidance above and want to
-              continue anyway.
-            </label>
-          </div>
-        </section>
+            <label for="schedule-long-run-day">Long run day (optional override)</label>
+            <select id="schedule-long-run-day" name="weekly_schedule.long_run_day">
+              <option value="">Let RunDrafter decide</option>
+              <option value="Monday">Monday</option>
+              <option value="Tuesday">Tuesday</option>
+              <option value="Wednesday">Wednesday</option>
+              <option value="Thursday">Thursday</option>
+              <option value="Friday">Friday</option>
+              <option value="Saturday">Saturday</option>
+              <option value="Sunday">Sunday</option>
+            </select>
 
-        <section aria-labelledby="b-races-heading">
-          <h2 id="b-races-heading">B races</h2>
-          <p>Optional - secondary goal races, up to three.</p>
-          <div id="b-races-list"></div>
-          <button type="button" id="add-b-race">Add B race</button>
-        </section>
+            <fieldset>
+              <legend>Rest days (optional override)</legend>
+              <p>Leave unticked to let RunDrafter choose your rest days.</p>
+              <label><input type="checkbox" name="weekly_schedule.rest_days" value="Monday" /> Monday</label>
+              <label><input type="checkbox" name="weekly_schedule.rest_days" value="Tuesday" /> Tuesday</label>
+              <label><input type="checkbox" name="weekly_schedule.rest_days" value="Wednesday" /> Wednesday</label>
+              <label><input type="checkbox" name="weekly_schedule.rest_days" value="Thursday" /> Thursday</label>
+              <label><input type="checkbox" name="weekly_schedule.rest_days" value="Friday" /> Friday</label>
+              <label><input type="checkbox" name="weekly_schedule.rest_days" value="Saturday" /> Saturday</label>
+              <label><input type="checkbox" name="weekly_schedule.rest_days" value="Sunday" /> Sunday</label>
+            </fieldset>
 
-        <template id="b-race-template">
-          <fieldset class="repeating-row">
-            <legend>B race</legend>
-            <label>
-              Name
-              <input type="text" name="b_races.__INDEX__.name" required />
-            </label>
-            <label>
-              Distance
-              <select name="b_races.__INDEX__.distance" required>
-                <option value="5k">5 km</option>
-                <option value="10k">10 km</option>
-                <option value="half">Half marathon</option>
-                <option value="marathon">Marathon</option>
-              </select>
-            </label>
-            <label>
-              Date
-              <input type="date" name="b_races.__INDEX__.date" required />
-            </label>
-            <label>
-              Target time (H:MM:SS, optional)
-              <input type="text" name="b_races.__INDEX__.target_time" />
-            </label>
-            <button type="button" data-remove-row>Remove</button>
-          </fieldset>
-        </template>
+            <fieldset>
+              <legend>Preferred sessions</legend>
+              <p>
+                Recurring running sessions the plan should schedule around, e.g.
+                a weekly parkrun or a club run. Fill in both distance and effort
+                to make an entry an anchor session - a fixed-distance,
+                fixed-effort commitment the plan eases off before races, late
+                in the taper, or under injury caution.
+              </p>
+              <div id="preferred-sessions-list"></div>
+              <button type="button" id="add-preferred-session">Add preferred session</button>
+            </fieldset>
+          </section>
 
-        <section aria-labelledby="other-events-heading">
-          <h2 id="other-events-heading">Other events</h2>
-          <p>Optional - events you'll take part in but not race.</p>
-          <div id="other-events-list"></div>
-          <button type="button" id="add-other-event">Add other event</button>
-        </section>
+          <template id="preferred-session-template">
+            <fieldset class="repeating-row">
+              <legend>Preferred session</legend>
+              <label>
+                Day
+                <select name="weekly_schedule.preferred_sessions.__INDEX__.day" required>
+                  <option value="Monday">Monday</option>
+                  <option value="Tuesday">Tuesday</option>
+                  <option value="Wednesday">Wednesday</option>
+                  <option value="Thursday">Thursday</option>
+                  <option value="Friday">Friday</option>
+                  <option value="Saturday">Saturday</option>
+                  <option value="Sunday">Sunday</option>
+                </select>
+              </label>
+              <label>
+                Description
+                <input
+                  type="text"
+                  name="weekly_schedule.preferred_sessions.__INDEX__.description"
+                  placeholder="e.g. club run"
+                  required
+                />
+              </label>
+              <label>
+                Distance (<span data-unit-label>km</span>, optional)
+                <input
+                  type="number"
+                  name="weekly_schedule.preferred_sessions.__INDEX__.distance"
+                  min="0"
+                  step="any"
+                />
+              </label>
+              <label>
+                Effort (optional)
+                <select name="weekly_schedule.preferred_sessions.__INDEX__.effort">
+                  <option value=""></option>
+                  <option value="easy">Easy</option>
+                  <option value="threshold">Threshold</option>
+                </select>
+              </label>
+              <p class="help-text">
+                Fill in both distance and effort to turn this into a scheduled
+                anchor session.
+              </p>
+              <button type="button" data-remove-row>Remove</button>
+            </fieldset>
+          </template>
 
-        <template id="other-event-template">
-          <fieldset class="repeating-row">
-            <legend>Other event</legend>
-            <label>
-              Name
-              <input type="text" name="other_events.__INDEX__.name" required />
-            </label>
-            <label>
-              Distance
-              <select name="other_events.__INDEX__.distance" required>
-                <option value="5k">5 km</option>
-                <option value="10k">10 km</option>
-                <option value="half">Half marathon</option>
-                <option value="marathon">Marathon</option>
-              </select>
-            </label>
-            <label>
-              Date
-              <input type="date" name="other_events.__INDEX__.date" required />
-            </label>
-            <button type="button" data-remove-row>Remove</button>
-          </fieldset>
-        </template>
+          <section aria-labelledby="strength-heading">
+            <h3 id="strength-heading">Strength and cross-training</h3>
+            <p>Optional - describes non-running training you already do.</p>
+            <label for="strength-per-week">Strength sessions per week</label>
+            <input id="strength-per-week" name="strength_cross.strength_per_week" type="number" min="0" step="1" />
 
-        <section aria-labelledby="notes-heading">
-          <h2 id="notes-heading">Notes</h2>
-          <label for="notes-other">Anything else the plan should know? (optional)</label>
-          <textarea id="notes-other" name="notes.other" rows="4"></textarea>
-        </section>
+            <fieldset>
+              <legend>Strength session days</legend>
+              <label><input type="checkbox" name="strength_cross.strength_days" value="Monday" /> Monday</label>
+              <label><input type="checkbox" name="strength_cross.strength_days" value="Tuesday" /> Tuesday</label>
+              <label><input type="checkbox" name="strength_cross.strength_days" value="Wednesday" /> Wednesday</label>
+              <label><input type="checkbox" name="strength_cross.strength_days" value="Thursday" /> Thursday</label>
+              <label><input type="checkbox" name="strength_cross.strength_days" value="Friday" /> Friday</label>
+              <label><input type="checkbox" name="strength_cross.strength_days" value="Saturday" /> Saturday</label>
+              <label><input type="checkbox" name="strength_cross.strength_days" value="Sunday" /> Sunday</label>
+            </fieldset>
 
-        <section aria-labelledby="output-heading">
-          <h2 id="output-heading">Output</h2>
-          <fieldset>
-            <legend>Formats</legend>
+            <label for="strength-type">Strength work description</label>
+            <input
+              id="strength-type"
+              name="strength_cross.strength_type"
+              type="text"
+              placeholder="e.g. gym weights and core"
+            />
+
             <label>
-              <input type="checkbox" name="output.formats" value="spreadsheet" />
-              Spreadsheet (editable, with tracking)
+              <input type="checkbox" name="strength_cross.warmup_jog" />
+              I do a warm-up jog before strength sessions
             </label>
-            <label>
-              <input type="checkbox" name="output.formats" value="pdf" />
-              PDF (reference copy)
-            </label>
-          </fieldset>
-          <label>
-            <input type="checkbox" name="output.tracking" />
-            Include an Actual column for logging completed distances against
-            planned ones
-          </label>
-        </section>
+
+            <fieldset>
+              <legend>Cross-training (optional)</legend>
+              <label for="cross-training-type">Type</label>
+              <input
+                id="cross-training-type"
+                name="strength_cross.cross_training.type"
+                type="text"
+                placeholder="e.g. cycling, swimming"
+              />
+
+              <label for="cross-training-frequency">Frequency</label>
+              <input
+                id="cross-training-frequency"
+                name="strength_cross.cross_training.frequency"
+                type="text"
+                placeholder="e.g. once a week"
+              />
+            </fieldset>
+          </section>
+
+          <section aria-labelledby="preferences-heading">
+            <h3 id="preferences-heading">Preferences</h3>
+            <fieldset>
+              <legend>Calibrate training paces to</legend>
+              <label>
+                <input type="radio" name="preferences.calibrate_to" value="" checked />
+                Let RunDrafter decide
+              </label>
+              <label>
+                <input type="radio" name="preferences.calibrate_to" value="current" />
+                Current fitness
+              </label>
+              <label>
+                <input type="radio" name="preferences.calibrate_to" value="goal" />
+                Goal pace
+              </label>
+            </fieldset>
+
+            <fieldset>
+              <legend>Build mode</legend>
+              <label>
+                <input type="radio" name="preferences.build_mode" value="" checked />
+                Let RunDrafter decide
+              </label>
+              <label>
+                <input type="radio" name="preferences.build_mode" value="standard" />
+                Standard build
+              </label>
+              <label>
+                <input type="radio" name="preferences.build_mode" value="cautious" />
+                Cautious build (reduced ramp, more recovery)
+              </label>
+            </fieldset>
+          </section>
+
+          <section aria-labelledby="injuries-heading">
+            <h3 id="injuries-heading">Injuries</h3>
+            <p>Optional - current, recent, or historical injuries.</p>
+            <div id="injuries-list"></div>
+            <button type="button" id="add-injury">Add injury</button>
+          </section>
+
+          <template id="injury-template">
+            <fieldset class="repeating-row">
+              <legend>Injury</legend>
+              <label>
+                Area
+                <input
+                  type="text"
+                  name="injuries.__INDEX__.area"
+                  placeholder="e.g. left achilles"
+                  required
+                />
+              </label>
+              <label>
+                Status
+                <select name="injuries.__INDEX__.status" required>
+                  <option value="current">Active now - limiting training</option>
+                  <option value="recent">Resolved in the last 1-3 months</option>
+                  <option value="historical">Old injury, worth noting as a risk area</option>
+                </select>
+              </label>
+              <label>
+                Notes (optional)
+                <input type="text" name="injuries.__INDEX__.notes" />
+              </label>
+              <button type="button" data-remove-row>Remove</button>
+            </fieldset>
+          </template>
+
+          <section aria-labelledby="notes-heading">
+            <h3 id="notes-heading">Notes</h3>
+            <label for="notes-other">Anything else the plan should know? (optional)</label>
+            <textarea id="notes-other" name="notes.other" rows="4"></textarea>
+          </section>
+
+          <section aria-labelledby="output-heading">
+            <h3 id="output-heading">Output</h3>
+            <fieldset>
+              <legend>Formats</legend>
+              <p>Leave both unticked to let RunDrafter decide (generates both).</p>
+              <label>
+                <input type="checkbox" name="output.formats" value="spreadsheet" />
+                Spreadsheet (editable, with an Actual column for logging progress)
+              </label>
+              <label>
+                <input type="checkbox" name="output.formats" value="pdf" />
+                PDF (reference copy)
+              </label>
+            </fieldset>
+          </section>
+        </div>
 
         <div id="form-errors" role="alert" aria-live="polite" tabindex="-1"></div>
 

@@ -3,7 +3,6 @@
   "runner": {
     "name": "Alex Smith",
     "age": 38,
-    "sex": "M",
     "experience": "experienced"
   },
   "goal": {
@@ -24,9 +23,11 @@
     "recent_peak_weekly": 50
   },
   "weekly_schedule": {
-    "days_available": 5,
+    "availability": {
+      "Tuesday": { "morning": false },
+      "Thursday": { "morning": false }
+    },
     "long_run_day": "Sunday",
-    "rest_days": ["Monday", "Friday"],
     "preferred_sessions": [
       { "day": "Tuesday", "description": "intervals with running club" },
       {
@@ -44,7 +45,6 @@
     "warmup_jog": false,
     "cross_training": { "type": "", "frequency": "" }
   },
-  "preferences": { "calibrate_to": "current", "build_mode": "standard" },
   "injuries": [
     {
       "area": "left achilles",
@@ -73,6 +73,5 @@
   ],
   "other_events": [
     { "name": "Bridge to Brisbane", "distance": "10k", "date": "2026-08-16" }
-  ],
-  "output": { "formats": ["spreadsheet", "pdf"], "tracking": true }
+  ]
 }
