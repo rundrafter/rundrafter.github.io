@@ -16,6 +16,33 @@ function omitEmptyPreferredSessions(weeklySchedule) {
   };
 }
 
+// Sparsifies the availability grid: absent = available (the schema
+// default), so only an explicitly unticked half-day is worth emitting. A
+// weekday with nothing unticked is dropped entirely.
+function pruneAvailability(availability) {
+  if (!availability) return undefined;
+  const sparse = {};
+  for (const [day, halves] of Object.entries(availability)) {
+    const unticked = {};
+    if (halves?.morning === false) unticked.morning = false;
+    if (halves?.evening === false) unticked.evening = false;
+    if (Object.keys(unticked).length > 0) sparse[day] = unticked;
+  }
+  return Object.keys(sparse).length > 0 ? sparse : undefined;
+}
+
+// Prunes weekly_schedule to an override-only object: the availability grid
+// keeps only unticked half-days, long_run_day/rest_days/preferred_sessions
+// drop when left on "let RunDrafter decide", and the whole section is
+// omitted when nothing was overridden.
+function pruneWeeklySchedule(schedule) {
+  if (!schedule) return undefined;
+  const { availability, ...rest } = omitEmptyPreferredSessions(omitEmpty(schedule));
+  const sparseAvailability = pruneAvailability(availability);
+  const cleaned = sparseAvailability ? { ...rest, availability: sparseAvailability } : rest;
+  return Object.keys(cleaned).length > 0 ? cleaned : undefined;
+}
+
 // Whether a value carries user-entered content, for deciding if a whole
 // optional section/row was left blank and should be omitted rather than
 // emitted as an empty or partial object.
@@ -75,7 +102,6 @@ function validateCrossField(formState) {
   const goal = formState.goal ?? {};
   const consent = formState.consent ?? {};
   const healthScreen = formState.health_screen ?? {};
-  const output = formState.output ?? {};
   const recentResult = formState.recent_result ?? {};
   const schedule = formState.weekly_schedule ?? {};
 
@@ -145,17 +171,13 @@ function validateCrossField(formState) {
     errors.push("Long run day cannot also be a rest day.");
   }
 
-  if (
-    typeof schedule.days_available === "number" &&
-    schedule.days_available < 3
-  ) {
-    errors.push("At least 3 running days per week are required.");
-  }
-
+  // days_available is no longer a raw-intake field (the resolver derives it
+  // from the availability grid) and rest_days/long_run_day are optional
+  // overrides now, so an unset grid/override is "let RunDrafter decide",
+  // not a validation failure. An under-constrained grid is a resolver-side
+  // warning (SCHEDULE_UNDER_CONSTRAINED in validate.py), not something this
+  // form can check without the resolver.
   const restDays = schedule.rest_days ?? [];
-  if (restDays.length === 0) {
-    errors.push("Select at least one rest day.");
-  }
 
   const preferredOnRestDay = [
     ...new Set(
@@ -184,9 +206,9 @@ function validateCrossField(formState) {
     }
   }
 
-  if (!Array.isArray(output.formats) || output.formats.length === 0) {
-    errors.push("Select at least one output format.");
-  }
+  // output.formats is optional now too: leaving both format checkboxes
+  // unticked means "let RunDrafter decide" (the resolver defaults to
+  // both), so an empty/absent formats list is no longer a blocking error.
 
   return errors;
 }
@@ -221,6 +243,9 @@ export function assemble(formState, { now } = {}) {
   const bRaces = pruneRepeatingSection(formState.b_races);
   const otherEvents = pruneRepeatingSection(formState.other_events);
   const notes = pruneOptionalObject(formState.notes);
+  const weeklySchedule = pruneWeeklySchedule(formState.weekly_schedule);
+  const preferences = pruneOptionalObject(formState.preferences);
+  const output = pruneOptionalObject(formState.output);
 
   const intake = {
     meta: { schema_version: "1", submitted_at: timestamp },
@@ -229,18 +254,16 @@ export function assemble(formState, { now } = {}) {
     goal: omitEmpty(formState.goal ?? {}),
     recent_result: omitEmpty(formState.recent_result ?? {}),
     current_fitness: omitEmpty(formState.current_fitness ?? {}),
-    weekly_schedule: omitEmptyPreferredSessions(
-      omitEmpty(formState.weekly_schedule ?? {}),
-    ),
+    ...(weeklySchedule && { weekly_schedule: weeklySchedule }),
     ...(strengthCross && { strength_cross: strengthCross }),
-    preferences: omitEmpty(formState.preferences ?? {}),
+    ...(preferences && { preferences }),
     ...(injuries && { injuries }),
     health_screen: omitEmpty(formState.health_screen ?? {}),
     consent: pruneConsent(formState.consent, timestamp),
     ...(bRaces && { b_races: bRaces }),
     ...(otherEvents && { other_events: otherEvents }),
     ...(notes && { notes }),
-    output: omitEmpty(formState.output ?? {}),
+    ...(output && { output }),
   };
 
   return { intake, errors, warnings };
