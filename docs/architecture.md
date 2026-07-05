@@ -112,6 +112,16 @@ accepts never bounces back from the pipeline.
     become an anchor session — one without the other blocks with a message
     naming the row (schema-level `dependentRequired`, given a friendly
     message here rather than a raw Ajv error).
+  - A day whose grid has both halves unticked (see `pruneAvailability`'s
+    "absent = available" default) is never a running day; unlike a
+    trainable-day *count*, the grid expresses this directly, so it's
+    checked against every explicit override:
+    - `weekly_schedule.long_run_day` must not be a fully-unticked day
+      (`LONG_RUN_DAY_UNAVAILABLE`).
+    - An explicit `rest_days` override must cover every fully-unticked day
+      (`REST_DAYS_OMIT_UNAVAILABLE_DAY`).
+    - No `preferred_sessions[].day` falls on a fully-unticked day
+      (`PREFERRED_SESSION_ON_UNAVAILABLE_DAY`).
 - **Timestamps.** Set `meta.submitted_at` and `consent.accepted_at`
   (ISO 8601) at the moment of handoff, not earlier.
 

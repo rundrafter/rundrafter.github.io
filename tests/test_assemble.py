@@ -243,6 +243,67 @@ def test_rest_days_empty_lets_rundrafter_decide(page: Page) -> None:
     assert_schema_valid(result["intake"])
 
 
+def test_long_run_day_on_unavailable_day_blocks(page: Page) -> None:
+    """A long run day with both halves unticked in the grid blocks handoff."""
+    state = valid_state()
+    state["weekly_schedule"]["availability"] = {
+        "Tuesday": {"morning": False, "evening": False}
+    }
+    state["weekly_schedule"]["long_run_day"] = "Tuesday"
+    result = run_assemble(page, state)
+    assert any("long run day" in e.lower() for e in result["errors"])
+
+
+def test_rest_days_omitting_unavailable_day_blocks(page: Page) -> None:
+    """A rest_days override that omits a fully-unticked day blocks handoff."""
+    state = valid_state()
+    state["weekly_schedule"]["availability"] = {
+        "Tuesday": {"morning": False, "evening": False}
+    }
+    result = run_assemble(page, state)
+    assert any("rest day" in e.lower() and "tuesday" in e.lower() for e in result["errors"])
+
+
+def test_rest_days_covering_unavailable_day_passes(page: Page) -> None:
+    """A rest_days override that covers every fully-unticked day is allowed."""
+    state = valid_state()
+    state["weekly_schedule"]["availability"] = {
+        "Tuesday": {"morning": False, "evening": False}
+    }
+    state["weekly_schedule"]["rest_days"] = ["Monday", "Tuesday"]
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert_schema_valid(result["intake"])
+
+
+def test_preferred_session_on_unavailable_day_blocks(page: Page) -> None:
+    """A preferred session on a fully-unticked day blocks handoff."""
+    state = valid_state()
+    state["weekly_schedule"]["availability"] = {
+        "Tuesday": {"morning": False, "evening": False}
+    }
+    state["weekly_schedule"]["preferred_sessions"] = [
+        {"day": "Tuesday", "description": "tempo"}
+    ]
+    result = run_assemble(page, state)
+    assert any("preferred session" in e.lower() for e in result["errors"])
+
+
+def test_preferred_session_off_unavailable_day_passes(page: Page) -> None:
+    """A preferred session scheduled on an available day is allowed."""
+    state = valid_state()
+    state["weekly_schedule"]["availability"] = {
+        "Tuesday": {"morning": False, "evening": False}
+    }
+    state["weekly_schedule"]["rest_days"] = ["Monday", "Tuesday"]
+    state["weekly_schedule"]["preferred_sessions"] = [
+        {"day": "Wednesday", "description": "intervals"}
+    ]
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert_schema_valid(result["intake"])
+
+
 def test_preferred_session_distance_without_effort_blocks(page: Page) -> None:
     """A preferred session with distance but no effort blocks with a friendly
     message naming the row, rather than a raw Ajv dependentRequired error."""
