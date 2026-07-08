@@ -46,7 +46,7 @@ copy running under a different JS runtime.
   token closes that gap (see the spec's manual steps), `just check-contract`
   against the sibling checkout is the only drift check, and it's manual.
 - Cross-field product rules the schema can't express (date ordering, the
-  health-screen consent gate, non-empty output formats) are enforced separately
+  disclaimer consent gate, non-empty output formats) are enforced separately
   in `assemble.js` — schema validation is necessary, not sufficient.
 
 Status: Accepted.

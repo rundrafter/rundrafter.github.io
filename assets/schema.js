@@ -10,7 +10,6 @@ export default {
     "goal",
     "recent_result",
     "current_fitness",
-    "health_screen",
     "consent"
   ],
   "additionalProperties": false,
@@ -364,49 +363,6 @@ export default {
         }
       }
     },
-    "health_screen": {
-      "type": "object",
-      "required": [
-        "heart_condition",
-        "chest_pain_activity",
-        "chest_pain_rest",
-        "dizziness_balance",
-        "bone_joint_problem",
-        "bp_or_heart_meds",
-        "pregnancy",
-        "recent_surgery_illness"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "heart_condition": {
-          "type": "boolean"
-        },
-        "chest_pain_activity": {
-          "type": "boolean"
-        },
-        "chest_pain_rest": {
-          "type": "boolean"
-        },
-        "dizziness_balance": {
-          "type": "boolean"
-        },
-        "bone_joint_problem": {
-          "type": "boolean"
-        },
-        "bp_or_heart_meds": {
-          "type": "boolean"
-        },
-        "pregnancy": {
-          "type": "boolean"
-        },
-        "recent_surgery_illness": {
-          "type": "boolean"
-        },
-        "other_reason": {
-          "type": "string"
-        }
-      }
-    },
     "consent": {
       "type": "object",
       "required": [
@@ -418,9 +374,6 @@ export default {
           "type": "boolean"
         },
         "terms_accepted": {
-          "type": "boolean"
-        },
-        "health_acknowledged": {
           "type": "boolean"
         },
         "accepted_at": {

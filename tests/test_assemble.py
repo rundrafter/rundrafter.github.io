@@ -69,32 +69,6 @@ def test_disclaimer_gate_blocks_when_missing(page: Page) -> None:
     assert any("disclaimer" in e.lower() for e in result["errors"])
 
 
-def test_health_screen_flag_requires_acknowledgement(page: Page) -> None:
-    """A raised health-screen flag without acknowledgement blocks handoff."""
-    state = valid_state()
-    state["health_screen"]["chest_pain_activity"] = True
-    result = run_assemble(page, state)
-    assert any("acknowledg" in e.lower() for e in result["errors"])
-
-
-def test_health_screen_flag_passes_with_acknowledgement(page: Page) -> None:
-    """A raised health-screen flag with acknowledgement assembles cleanly."""
-    state = valid_state()
-    state["health_screen"]["chest_pain_activity"] = True
-    state["consent"]["health_acknowledged"] = True
-    result = run_assemble(page, state)
-    assert result["errors"] == []
-    assert_schema_valid(result["intake"])
-
-
-def test_health_screen_all_false_does_not_require_acknowledgement(
-    page: Page,
-) -> None:
-    """No health-screen flags raised means no acknowledgement is required."""
-    result = run_assemble(page, valid_state())
-    assert not any("acknowledg" in e.lower() for e in result["errors"])
-
-
 def test_start_date_after_goal_date_blocks(page: Page) -> None:
     """A plan start date after the race date blocks handoff."""
     state = valid_state()
@@ -417,30 +391,6 @@ def test_four_unavailable_days_does_not_warn(page: Page) -> None:
     result = run_assemble(page, state)
     assert result["errors"] == []
     assert result["warnings"] == []
-    assert_schema_valid(result["intake"])
-
-
-def test_health_acknowledged_false_is_omitted(page: Page) -> None:
-    """A hidden, unchecked health_acknowledged control still submits `false`
-    (single checkbox); it should be dropped rather than emitted."""
-    state = valid_state()
-    state["consent"]["health_acknowledged"] = False
-    result = run_assemble(page, state)
-    assert "health_acknowledged" not in result["intake"]["consent"]
-
-
-def test_other_reason_blank_is_omitted(page: Page) -> None:
-    """A blank health_screen.other_reason is omitted, not emitted as ""."""
-    result = run_assemble(page, valid_state())
-    assert "other_reason" not in result["intake"]["health_screen"]
-
-
-def test_other_reason_filled_round_trips(page: Page) -> None:
-    """A filled health_screen.other_reason is carried through to the intake."""
-    state = valid_state()
-    state["health_screen"]["other_reason"] = "Recovering from a cold"
-    result = run_assemble(page, state)
-    assert result["intake"]["health_screen"]["other_reason"] == "Recovering from a cold"
     assert_schema_valid(result["intake"])
 
 

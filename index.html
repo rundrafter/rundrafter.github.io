@@ -107,54 +107,6 @@
             />
           </section>
 
-          <section aria-labelledby="health-heading">
-            <h3 id="health-heading">Health screen</h3>
-            <p>
-              Answer honestly - these questions flag when medical clearance is a
-              good idea before starting a training programme.
-            </p>
-            <label>
-              <input type="checkbox" name="health_screen.heart_condition" />
-              Have you ever been told you have a heart condition or had a stroke?
-            </label>
-            <label>
-              <input type="checkbox" name="health_screen.chest_pain_activity" />
-              Do you experience chest pain or pressure during physical activity?
-            </label>
-            <label>
-              <input type="checkbox" name="health_screen.chest_pain_rest" />
-              Have you had chest pain or pressure at rest in the last month?
-            </label>
-            <label>
-              <input type="checkbox" name="health_screen.dizziness_balance" />
-              Do you lose balance from dizziness, or lose consciousness?
-            </label>
-            <label>
-              <input type="checkbox" name="health_screen.bone_joint_problem" />
-              Do you have a bone, joint, or soft-tissue problem that is made
-              worse by physical activity?
-            </label>
-            <label>
-              <input type="checkbox" name="health_screen.bp_or_heart_meds" />
-              Are you currently taking medication for blood pressure or a heart
-              condition?
-            </label>
-            <label>
-              <input type="checkbox" name="health_screen.pregnancy" />
-              Are you pregnant or have you given birth in the last 3 months?
-            </label>
-            <label>
-              <input type="checkbox" name="health_screen.recent_surgery_illness" />
-              Have you had surgery or a serious illness in the last 3 months?
-            </label>
-
-            <label for="health-other-reason">
-              Any other reason you feel you should not begin an exercise
-              programme? (optional)
-            </label>
-            <input id="health-other-reason" name="health_screen.other_reason" type="text" />
-          </section>
-
           <section aria-labelledby="consent-heading">
             <h3 id="consent-heading">Consent</h3>
             <label>
@@ -162,18 +114,6 @@
               I have read and accept the disclaimer: this is training guidance,
               not medical advice. See a professional for pain or injury.
             </label>
-
-            <div id="health-acknowledgement" hidden>
-              <p>
-                You answered yes to one or more health-screen questions above.
-                Please check with a doctor before starting a training programme.
-              </p>
-              <label>
-                <input type="checkbox" name="consent.health_acknowledged" />
-                I understand the health-screen guidance above and want to
-                continue anyway.
-              </label>
-            </div>
           </section>
         </div>
 
@@ -584,8 +524,8 @@
           <span id="return-email"></span>
         </p>
         <p>
-          This file travels by ordinary email, including your health-screen
-          answers - please only send it to the address above.
+          This file travels by ordinary email, including your injury and
+          fitness details - please only send it to the address above.
         </p>
         <button type="button" id="download-again">Download again</button>
       </section>

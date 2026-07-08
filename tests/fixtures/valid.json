@@ -21,15 +21,5 @@
     "long_run_day": "Sunday",
     "rest_days": ["Monday"]
   },
-  "health_screen": {
-    "heart_condition": false,
-    "chest_pain_activity": false,
-    "chest_pain_rest": false,
-    "dizziness_balance": false,
-    "bone_joint_problem": false,
-    "bp_or_heart_meds": false,
-    "pregnancy": false,
-    "recent_surgery_illness": false
-  },
   "consent": { "disclaimer_accepted": true }
 }
