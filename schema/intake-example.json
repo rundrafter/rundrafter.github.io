@@ -50,16 +50,6 @@
       "notes": "Slight tightness after long runs, settled down over the last few weeks."
     }
   ],
-  "health_screen": {
-    "heart_condition": false,
-    "chest_pain_activity": false,
-    "chest_pain_rest": false,
-    "dizziness_balance": false,
-    "bone_joint_problem": false,
-    "bp_or_heart_meds": false,
-    "pregnancy": false,
-    "recent_surgery_illness": false
-  },
   "consent": {
     "disclaimer_accepted": true,
     "accepted_at": "2026-06-22T09:15:00+10:00"

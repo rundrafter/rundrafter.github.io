@@ -118,25 +118,6 @@ function setupUnitLabels(form) {
   return update;
 }
 
-function setupHealthAcknowledgement(form) {
-  const wrapper = document.getElementById("health-acknowledgement");
-  const checkboxes = form.querySelectorAll(
-    'input[name^="health_screen."][type="checkbox"]',
-  );
-  if (!wrapper || checkboxes.length === 0) return;
-
-  function update() {
-    const anyRaised = Array.from(checkboxes).some((el) => el.checked);
-    wrapper.hidden = !anyRaised;
-    if (!anyRaised) {
-      wrapper.querySelector('input[name="consent.health_acknowledged"]').checked = false;
-    }
-  }
-
-  checkboxes.forEach((el) => el.addEventListener("change", update));
-  update();
-}
-
 function clearFieldErrors(form) {
   form.querySelectorAll(".field-error").forEach((el) => el.remove());
   form.querySelectorAll('[aria-invalid="true"]').forEach((el) => {
@@ -281,7 +262,6 @@ const form = document.getElementById("intake-form");
 if (form) {
   form.addEventListener("submit", handleSubmit);
   const updateUnitLabels = setupUnitLabels(form);
-  setupHealthAcknowledgement(form);
   setupRepeatingGroup(
     "preferred-sessions-list",
     "preferred-session-template",

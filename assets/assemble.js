@@ -80,12 +80,8 @@ function pruneOptionalObject(obj) {
   return omitEmpty(obj);
 }
 
-// health_acknowledged is a single checkbox, so an unraised health flag still
-// submits it as `false` (omitEmpty keeps booleans); drop it in that case so
-// it's only ever present when the runner actually acknowledged the gate.
 function pruneConsent(consent, timestamp) {
   const merged = { ...consent, accepted_at: timestamp };
-  if (merged.health_acknowledged === false) delete merged.health_acknowledged;
   return omitEmpty(merged);
 }
 
@@ -135,21 +131,11 @@ function validateCrossField(formState) {
   const errors = [];
   const goal = formState.goal ?? {};
   const consent = formState.consent ?? {};
-  const healthScreen = formState.health_screen ?? {};
   const recentResult = formState.recent_result ?? {};
   const schedule = formState.weekly_schedule ?? {};
 
   if (consent.disclaimer_accepted !== true) {
     errors.push("You must accept the disclaimer to continue.");
-  }
-
-  const healthFlagRaised = Object.entries(healthScreen).some(
-    ([key, value]) => key !== "other_reason" && value === true,
-  );
-  if (healthFlagRaised && consent.health_acknowledged !== true) {
-    errors.push(
-      "Please acknowledge the medical-clearance guidance before continuing.",
-    );
   }
 
   if (goal.start_date && goal.date && goal.start_date >= goal.date) {
@@ -334,7 +320,6 @@ export function assemble(formState, { now } = {}) {
     ...(strengthCross && { strength_cross: strengthCross }),
     ...(preferences && { preferences }),
     ...(injuries && { injuries }),
-    health_screen: omitEmpty(formState.health_screen ?? {}),
     consent: pruneConsent(formState.consent, timestamp),
     ...(bRaces && { b_races: bRaces }),
     ...(otherEvents && { other_events: otherEvents }),

@@ -56,8 +56,7 @@ Summary of the intake object's top level (see the schema for exact types):
 | `strength_cross`  | optional  | strength_per_week, strength_days, strength_type, warmup_jog, cross_training{type,frequency}                                                                                                                                |
 | `preferences`     | optional  | calibrate_to (radio, default "Let RunDrafter decide"), build_mode (radio, default "Let RunDrafter decide")                                                                                                                 |
 | `injuries`        | optional  | repeating: area, status, notes                                                                                                                                                                                             |
-| `health_screen`   | yes       | 8 PAR-Q booleans + other_reason (opt)                                                                                                                                                                                      |
-| `consent`         | yes       | disclaimer_accepted (req), health_acknowledged (conditional), terms_accepted (opt), accepted_at (system)                                                                                                                   |
+| `consent`         | yes       | disclaimer_accepted (req), terms_accepted (opt), accepted_at (system)                                                                                                                                                      |
 | `b_races`         | optional  | repeating (≤3): name, distance, date, target_time                                                                                                                                                                          |
 | `other_events`    | optional  | repeating: name, distance, date                                                                                                                                                                                            |
 | `notes`           | optional  | other (textarea)                                                                                                                                                                                                           |
@@ -89,9 +88,6 @@ accepts never bounces back from the pipeline.
   `cross_training`, `injuries`, `b_races`, `other_events`, or `notes` blank,
   omit the key entirely — an empty `{}` can violate `required`/
   `additionalProperties`.
-- **Health screen → consent gate.** If any `health_screen` flag is `true`,
-  show the medical-clearance warning and require
-  `consent.health_acknowledged === true` before handoff.
 - **Disclaimer gate.** `consent.disclaimer_accepted` must be `true` to hand
   off.
 - **Date ordering** (mirrors `_validate_date_ordering`):
@@ -267,8 +263,8 @@ intercept downloads and `mailto:` navigation).
 - **Assembler tests** (`tests/test_assemble.py`): feed form-state fixtures
   into `assemble.js` in-page, assert the assembled object validates against
   the vendored schema (via Python's `jsonschema`, already a dependency), and
-  assert each cross-field rule fires (pruning, health gate, disclaimer gate,
-  date ordering + event-window + duplicate-date + schedule override rules,
+  assert each cross-field rule fires (pruning, disclaimer gate, date
+  ordering + event-window + duplicate-date + schedule override rules,
   anchor-session pairing) and each warning fires (stale recent result).
 - **Golden reproduction:** a fixture reproduces `schema/intake-example.json`'s
   structure from a plausible form-state, proving the form can emit the
