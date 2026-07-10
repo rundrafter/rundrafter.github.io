@@ -326,40 +326,6 @@ export default {
             "current",
             "goal"
           ]
-        },
-        "build_mode": {
-          "type": "string",
-          "enum": [
-            "cautious",
-            "standard"
-          ]
-        }
-      }
-    },
-    "injuries": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": [
-          "area",
-          "status"
-        ],
-        "additionalProperties": false,
-        "properties": {
-          "area": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "current",
-              "recent",
-              "historical"
-            ]
-          },
-          "notes": {
-            "type": "string"
-          }
         }
       }
     },

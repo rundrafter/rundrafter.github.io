@@ -268,7 +268,6 @@ if (form) {
     "add-preferred-session",
     { onRowAdded: () => updateUnitLabels() },
   );
-  setupRepeatingGroup("injuries-list", "injury-template", "add-injury");
   setupRepeatingGroup("b-races-list", "b-race-template", "add-b-race", {
     maxRows: 3,
   });

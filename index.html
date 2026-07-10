@@ -305,8 +305,8 @@
                 Recurring running sessions the plan should schedule around, e.g.
                 a weekly parkrun or a club run. Fill in both distance and effort
                 to make an entry an anchor session - a fixed-distance,
-                fixed-effort commitment the plan eases off before races, late
-                in the taper, or under injury caution.
+                fixed-effort commitment the plan eases off before races or
+                late in the taper.
               </p>
               <div id="preferred-sessions-list"></div>
               <button type="button" id="add-preferred-session">Add preferred session</button>
@@ -430,57 +430,7 @@
               </label>
             </fieldset>
 
-            <fieldset>
-              <legend>Build mode</legend>
-              <label>
-                <input type="radio" name="preferences.build_mode" value="" checked />
-                Let RunDrafter decide
-              </label>
-              <label>
-                <input type="radio" name="preferences.build_mode" value="standard" />
-                Standard build
-              </label>
-              <label>
-                <input type="radio" name="preferences.build_mode" value="cautious" />
-                Cautious build (reduced ramp, more recovery)
-              </label>
-            </fieldset>
           </section>
-
-          <section aria-labelledby="injuries-heading">
-            <h3 id="injuries-heading">Injuries</h3>
-            <p>Optional - current, recent, or historical injuries.</p>
-            <div id="injuries-list"></div>
-            <button type="button" id="add-injury">Add injury</button>
-          </section>
-
-          <template id="injury-template">
-            <fieldset class="repeating-row">
-              <legend>Injury</legend>
-              <label>
-                Area
-                <input
-                  type="text"
-                  name="injuries.__INDEX__.area"
-                  placeholder="e.g. left achilles"
-                  required
-                />
-              </label>
-              <label>
-                Status
-                <select name="injuries.__INDEX__.status" required>
-                  <option value="current">Active now - limiting training</option>
-                  <option value="recent">Resolved in the last 1-3 months</option>
-                  <option value="historical">Old injury, worth noting as a risk area</option>
-                </select>
-              </label>
-              <label>
-                Notes (optional)
-                <input type="text" name="injuries.__INDEX__.notes" />
-              </label>
-              <button type="button" data-remove-row>Remove</button>
-            </fieldset>
-          </template>
 
           <section aria-labelledby="notes-heading">
             <h3 id="notes-heading">Notes</h3>
@@ -524,8 +474,8 @@
           <span id="return-email"></span>
         </p>
         <p>
-          This file travels by ordinary email, including your injury and
-          fitness details - please only send it to the address above.
+          This file travels by ordinary email, including your fitness
+          details - please only send it to the address above.
         </p>
         <button type="button" id="download-again">Download again</button>
       </section>

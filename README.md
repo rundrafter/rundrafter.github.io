@@ -68,6 +68,6 @@ download + prefilled email, with branch protection on `main`. See
 [`docs/architecture.md`](docs/architecture.md) for how it's built and
 [`docs/decisions/`](docs/decisions/) for the design rationale.
 
-Privacy note: intakes carry injury and fitness details and arrive by ordinary
-email (see [ADR 003](docs/decisions/003-uniform-mailto-handoff.md)) — delete
-each `intake.json` from the inbox once it's been fed into the pipeline.
+Privacy note: intakes carry fitness details and arrive by ordinary email (see
+[ADR 003](docs/decisions/003-uniform-mailto-handoff.md)) — delete each
+`intake.json` from the inbox once it's been fed into the pipeline.

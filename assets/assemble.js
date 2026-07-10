@@ -94,8 +94,8 @@ function pruneStrengthCross(strengthCross) {
   return cleaned;
 }
 
-// Prunes a repeating optional section (injuries, b_races, other_events):
-// drops blank rows, then omits the whole array if nothing is left.
+// Prunes a repeating optional section (b_races, other_events): drops blank
+// rows, then omits the whole array if nothing is left.
 function pruneRepeatingSection(rows) {
   if (!Array.isArray(rows)) return undefined;
   const kept = rows.filter(hasContent).map(omitEmpty);
@@ -301,7 +301,6 @@ export function assemble(formState, { now } = {}) {
   const warnings = validateWarnings(formState);
 
   const strengthCross = pruneStrengthCross(formState.strength_cross);
-  const injuries = pruneRepeatingSection(formState.injuries);
   const bRaces = pruneRepeatingSection(formState.b_races);
   const otherEvents = pruneRepeatingSection(formState.other_events);
   const notes = pruneOptionalObject(formState.notes);
@@ -319,7 +318,6 @@ export function assemble(formState, { now } = {}) {
     ...(weeklySchedule && { weekly_schedule: weeklySchedule }),
     ...(strengthCross && { strength_cross: strengthCross }),
     ...(preferences && { preferences }),
-    ...(injuries && { injuries }),
     consent: pruneConsent(formState.consent, timestamp),
     ...(bRaces && { b_races: bRaces }),
     ...(otherEvents && { other_events: otherEvents }),
