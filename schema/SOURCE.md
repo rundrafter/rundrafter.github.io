@@ -19,7 +19,7 @@ The cross-field rules in `assets/assemble.js` mirror upstream
 revision is pinned, checked by `just check-contract` against the sibling
 checkout.
 
-rules_revision: 414fe89e69e1b26d162507ba2b2254cca9711bcc
+rules_revision: 3cb9fb7146e5f1552a6baf437938efc9339d0393
 
 After syncing assemble.js (and docs/architecture.md) to a rule change
 upstream, run `uv run python scripts/sync_contract.py --update-rules-revision`
