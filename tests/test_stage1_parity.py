@@ -109,7 +109,6 @@ def test_dom_smoke_download_passes_stage1(tmp_path: Path, page: Page) -> None:
     page.check('input[name="weekly_schedule.rest_days"][value="Monday"]')
 
     page.check('input[name="consent.disclaimer_accepted"]')
-    page.check('input[name="output.formats"][value="spreadsheet"]')
 
     with page.expect_download() as download_info:
         page.click('button[type="submit"]')

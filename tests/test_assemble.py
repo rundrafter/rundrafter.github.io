@@ -394,18 +394,6 @@ def test_four_unavailable_days_does_not_warn(page: Page) -> None:
     assert_schema_valid(result["intake"])
 
 
-def test_output_formats_omitted_lets_rundrafter_decide(page: Page) -> None:
-    """Leaving both output-format checkboxes unticked is no longer a
-    blocking error - the resolver defaults to both formats, so the whole
-    `output` section is pruned rather than emitted as `{"formats": []}`."""
-    state = valid_state()
-    state["output"] = {"formats": []}
-    result = run_assemble(page, state)
-    assert result["errors"] == []
-    assert "output" not in result["intake"]
-    assert_schema_valid(result["intake"])
-
-
 def test_timestamps_set_at_handoff(page: Page) -> None:
     """submitted_at and accepted_at are stamped with the handoff time."""
     result = run_assemble(page, valid_state(), now="2026-03-15T09:30:00.000Z")
@@ -423,7 +411,6 @@ def test_blank_optional_sections_are_omitted(page: Page) -> None:
         "b_races",
         "other_events",
         "notes",
-        "output",
     ):
         assert key not in intake
 
@@ -467,7 +454,6 @@ def test_dom_smoke_fill_download_validates(page: Page) -> None:
     page.check('input[name="weekly_schedule.rest_days"][value="Monday"]')
 
     page.check('input[name="consent.disclaimer_accepted"]')
-    page.check('input[name="output.formats"][value="spreadsheet"]')
 
     with page.expect_download() as download_info:
         page.click('button[type="submit"]')
@@ -499,7 +485,6 @@ def test_empty_required_field_shows_inline_error(page: Page) -> None:
     page.check('input[name="weekly_schedule.rest_days"][value="Monday"]')
 
     page.check('input[name="consent.disclaimer_accepted"]')
-    page.check('input[name="output.formats"][value="spreadsheet"]')
 
     # goal.race is left blank.
     page.click('button[type="submit"]')
