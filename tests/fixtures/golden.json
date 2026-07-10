@@ -45,13 +45,6 @@
     "warmup_jog": false,
     "cross_training": { "type": "", "frequency": "" }
   },
-  "injuries": [
-    {
-      "area": "left achilles",
-      "status": "recent",
-      "notes": "Slight tightness after long runs, settled down over the last few weeks."
-    }
-  ],
   "consent": { "disclaimer_accepted": true },
   "b_races": [
     {

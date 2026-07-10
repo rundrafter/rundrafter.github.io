@@ -420,7 +420,6 @@ def test_blank_optional_sections_are_omitted(page: Page) -> None:
     for key in (
         "strength_cross",
         "preferences",
-        "injuries",
         "b_races",
         "other_events",
         "notes",

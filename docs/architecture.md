@@ -54,8 +54,7 @@ Summary of the intake object's top level (see the schema for exact types):
 | `current_fitness` | yes       | weekly_distance, longest_run, recent_peak_weekly (opt)                                                                                                                                                                     |
 | `weekly_schedule` | optional  | availability grid (morning/evening per weekday, all ticked by default), long_run_day (opt override), rest_days (opt override, multi), preferred_sessions (repeating) — absent entirely leaves the schedule to the resolver |
 | `strength_cross`  | optional  | strength_per_week, strength_days, strength_type, warmup_jog, cross_training{type,frequency}                                                                                                                                |
-| `preferences`     | optional  | calibrate_to (radio, default "Let RunDrafter decide"), build_mode (radio, default "Let RunDrafter decide")                                                                                                                 |
-| `injuries`        | optional  | repeating: area, status, notes                                                                                                                                                                                             |
+| `preferences`     | optional  | calibrate_to (radio, default "Let RunDrafter decide")                                                                                                                                                                      |
 | `consent`         | yes       | disclaimer_accepted (req), terms_accepted (opt), accepted_at (system)                                                                                                                                                      |
 | `b_races`         | optional  | repeating (≤3): name, distance, date, target_time                                                                                                                                                                          |
 | `other_events`    | optional  | repeating: name, distance, date                                                                                                                                                                                            |
@@ -85,9 +84,8 @@ accepts never bounces back from the pipeline.
 
 - **Empty-object pruning.** Never emit an optional section as an empty or
   partial object. If the runner leaves `runner`, `strength_cross`,
-  `cross_training`, `injuries`, `b_races`, `other_events`, or `notes` blank,
-  omit the key entirely — an empty `{}` can violate `required`/
-  `additionalProperties`.
+  `cross_training`, `b_races`, `other_events`, or `notes` blank, omit the key
+  entirely — an empty `{}` can violate `required`/`additionalProperties`.
 - **Disclaimer gate.** `consent.disclaimer_accepted` must be `true` to hand
   off.
 - **Date ordering** (mirrors `_validate_date_ordering`):
