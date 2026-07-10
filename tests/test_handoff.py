@@ -101,7 +101,6 @@ def test_success_screen_after_valid_submission(page: Page) -> None:
     page.check('input[name="weekly_schedule.rest_days"][value="Monday"]')
 
     page.check('input[name="consent.disclaimer_accepted"]')
-    page.check('input[name="output.formats"][value="spreadsheet"]')
 
     with page.expect_download():
         page.click('button[type="submit"]')

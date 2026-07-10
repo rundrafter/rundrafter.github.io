@@ -261,10 +261,6 @@ function validateCrossField(formState) {
     }
   }
 
-  // output.formats is optional now too: leaving both format checkboxes
-  // unticked means "let RunDrafter decide" (the resolver defaults to
-  // both), so an empty/absent formats list is no longer a blocking error.
-
   return errors;
 }
 
@@ -306,7 +302,6 @@ export function assemble(formState, { now } = {}) {
   const notes = pruneOptionalObject(formState.notes);
   const weeklySchedule = pruneWeeklySchedule(formState.weekly_schedule);
   const preferences = pruneOptionalObject(formState.preferences);
-  const output = pruneOptionalObject(formState.output);
 
   const intake = {
     meta: { schema_version: "1", submitted_at: timestamp },
@@ -322,7 +317,6 @@ export function assemble(formState, { now } = {}) {
     ...(bRaces && { b_races: bRaces }),
     ...(otherEvents && { other_events: otherEvents }),
     ...(notes && { notes }),
-    ...(output && { output }),
   };
 
   return { intake, errors, warnings };

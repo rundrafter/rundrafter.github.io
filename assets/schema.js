@@ -436,24 +436,6 @@ export default {
           "type": "string"
         }
       }
-    },
-    "output": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "formats": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "enum": [
-              "spreadsheet",
-              "pdf"
-            ]
-          },
-          "minItems": 1,
-          "uniqueItems": true
-        }
-      }
     }
   }
 };

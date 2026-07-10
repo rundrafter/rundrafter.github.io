@@ -59,7 +59,6 @@ Summary of the intake object's top level (see the schema for exact types):
 | `b_races`         | optional  | repeating (≤3): name, distance, date, target_time                                                                                                                                                                          |
 | `other_events`    | optional  | repeating: name, distance, date                                                                                                                                                                                            |
 | `notes`           | optional  | other (textarea)                                                                                                                                                                                                           |
-| `output`          | optional  | formats (checkboxes: spreadsheet/pdf; both unticked = let RunDrafter decide) — `tracking` is gone, the spreadsheet always carries an Actual column                                                                         |
 
 `progress` exists in the schema for phase-3 re-planning and is **not**
 collected by this form.
@@ -119,12 +118,11 @@ accepts never bounces back from the pipeline.
 - **Timestamps.** Set `meta.submitted_at` and `consent.accepted_at`
   (ISO 8601) at the moment of handoff, not earlier.
 
-An empty `weekly_schedule.rest_days` override, or both `output.formats`
-checkboxes left unticked, are **not** errors — they're pruned to "absent"
-(see empty-object/array pruning above) and mean "let RunDrafter decide".
-Neither `weekly_schedule.days_available ≥ 3` nor a required `output.formats`
-are enforced here any more: the availability grid can't express a trainable-
-day count directly, so an under-constrained grid is instead a **resolver**-side
+An empty `weekly_schedule.rest_days` override is **not** an error — it's
+pruned to "absent" (see empty-object/array pruning above) and means "let
+RunDrafter decide". `weekly_schedule.days_available ≥ 3` isn't enforced here
+any more either: the availability grid can't express a trainable-day count
+directly, so an under-constrained grid is instead a **resolver**-side
 warning (`SCHEDULE_UNDER_CONSTRAINED` in `validate.py`) this form generally
 can't check without running the resolver — except the over-constrained-grid
 case below, which is form-checkable.

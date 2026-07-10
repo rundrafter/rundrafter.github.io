@@ -7,7 +7,7 @@ Vendored from the upstream `rundrafter` repo's intake contract:
 
 Pinned upstream revision:
 
-revision: 414fe89e69e1b26d162507ba2b2254cca9711bcc
+revision: b497cda74051cf20967dcdc36a7a44b15a9cf7ea
 
 Re-sync with `just sync-contract` (`uv run python scripts/sync_contract.py`).
 
