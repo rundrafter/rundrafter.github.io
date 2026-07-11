@@ -1,0 +1,18 @@
+{
+  "units": "km",
+  "runner": {
+    "name": "Sam Okafor",
+    "experience": "new"
+  },
+  "goal": {
+    "race": "Riverside Fun Run",
+    "distance": "10k",
+    "target_time_mode": "suggest",
+    "date": "2026-09-13",
+    "start_date": "2026-06-29"
+  },
+  "current_fitness": { "weekly_distance": 12, "longest_run": 5 },
+  "notes": {
+    "other": "First-time runner, no race or time-trial history yet."
+  }
+}

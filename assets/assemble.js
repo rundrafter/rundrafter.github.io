@@ -26,11 +26,20 @@ function omitEmpty(obj) {
   return result;
 }
 
-function omitEmptyPreferredSessions(weeklySchedule) {
+// Maps one weekly-session-template row from its form shape (a
+// `skip_tailoring` tickbox) to the contract shape (ADR 014): `tailored` is
+// omitted when true (the schema default) and only emitted as `false` when
+// the tickbox was checked.
+function mapPreferredSession(session) {
+  const { skip_tailoring, ...rest } = session ?? {};
+  return omitEmpty({ ...rest, ...(skip_tailoring ? { tailored: false } : {}) });
+}
+
+function mapPreferredSessions(weeklySchedule) {
   if (!Array.isArray(weeklySchedule.preferred_sessions)) return weeklySchedule;
   return {
     ...weeklySchedule,
-    preferred_sessions: weeklySchedule.preferred_sessions.map(omitEmpty),
+    preferred_sessions: weeklySchedule.preferred_sessions.map(mapPreferredSession),
   };
 }
 
@@ -50,15 +59,28 @@ function pruneAvailability(availability) {
 }
 
 // Prunes weekly_schedule to an override-only object: the availability grid
-// keeps only unticked half-days, long_run_day/rest_days/preferred_sessions
-// drop when left on "let RunDrafter decide", and the whole section is
-// omitted when nothing was overridden.
+// keeps only unticked half-days, long_run_day/preferred_sessions drop when
+// left on "let RunDrafter decide", and the whole section is omitted when
+// nothing was overridden. There is no `rest_days` override any more (ADR
+// 017) - the resolver always derives rest days.
 function pruneWeeklySchedule(schedule) {
   if (!schedule) return undefined;
-  const { availability, ...rest } = omitEmptyPreferredSessions(omitEmpty(schedule));
+  const { availability, ...rest } = mapPreferredSessions(omitEmpty(schedule));
   const sparseAvailability = pruneAvailability(availability);
   const cleaned = sparseAvailability ? { ...rest, availability: sparseAvailability } : rest;
   return Object.keys(cleaned).length > 0 ? cleaned : undefined;
+}
+
+// Resolves the goal's target-time radio (form-only field, never part of the
+// contract) into the schema's three-way `target_time`: the entered specific
+// time, or the "finish"/"suggest" literal (ADR 016).
+function resolveGoal(goal) {
+  const { target_time_mode, ...rest } = goal ?? {};
+  const target_time =
+    target_time_mode === "finish" || target_time_mode === "suggest"
+      ? target_time_mode
+      : rest.target_time;
+  return omitEmpty({ ...rest, target_time });
 }
 
 // Whether a value carries user-entered content, for deciding if a whole
@@ -78,20 +100,6 @@ function hasContent(value) {
 function pruneOptionalObject(obj) {
   if (!obj || !hasContent(obj)) return undefined;
   return omitEmpty(obj);
-}
-
-function pruneConsent(consent, timestamp) {
-  const merged = { ...consent, accepted_at: timestamp };
-  return omitEmpty(merged);
-}
-
-function pruneStrengthCross(strengthCross) {
-  const cleaned = pruneOptionalObject(strengthCross);
-  if (!cleaned) return undefined;
-  const crossTraining = pruneOptionalObject(cleaned.cross_training);
-  if (crossTraining) cleaned.cross_training = crossTraining;
-  else delete cleaned.cross_training;
-  return cleaned;
 }
 
 // Prunes a repeating optional section (b_races, other_events): drops blank
@@ -130,13 +138,8 @@ const MIN_TRAINABLE_DAYS = 3;
 function validateCrossField(formState) {
   const errors = [];
   const goal = formState.goal ?? {};
-  const consent = formState.consent ?? {};
   const recentResult = formState.recent_result ?? {};
   const schedule = formState.weekly_schedule ?? {};
-
-  if (consent.disclaimer_accepted !== true) {
-    errors.push("You must accept the disclaimer to continue.");
-  }
 
   if (goal.start_date && goal.date && goal.start_date >= goal.date) {
     errors.push("Plan start date must be strictly before the goal race date.");
@@ -152,18 +155,25 @@ function validateCrossField(formState) {
     );
   }
 
+  // b_races name themselves; other_events have no name field, so they're
+  // labelled by type instead (mirrors validate.py's _validate_date_ordering).
   const events = [
-    ...(formState.b_races ?? []).map((row) => ({ label: "B race", row })),
+    ...(formState.b_races ?? []).map((row) => ({
+      label: "B race",
+      name: row?.name,
+      row,
+    })),
     ...(formState.other_events ?? []).map((row) => ({
       label: "Other event",
+      name: row?.type,
       row,
     })),
   ];
 
   const seenDates = new Map();
-  for (const { label, row } of events) {
+  for (const { label, name, row } of events) {
     if (!row?.date) continue;
-    const eventLabel = `${label} "${row.name || row.date}"`;
+    const eventLabel = `${label} "${name || row.date}"`;
 
     if (
       goal.start_date &&
@@ -184,53 +194,24 @@ function validateCrossField(formState) {
     }
   }
 
-  if (
-    schedule.long_run_day &&
-    (schedule.rest_days ?? []).includes(schedule.long_run_day)
-  ) {
-    errors.push("Long run day cannot also be a rest day.");
-  }
-
-  // days_available is no longer a raw-intake field (the resolver derives it
-  // from the availability grid) and rest_days/long_run_day are optional
-  // overrides now, so an unset grid/override is "let RunDrafter decide",
-  // not a validation failure. An under-constrained grid is generally a
-  // resolver-side warning (SCHEDULE_UNDER_CONSTRAINED in validate.py) this
-  // form can't check without the resolver - except the 5-or-more-unticked-days
-  // case handled as a warning below, which is guaranteed regardless of what
-  // the resolver decides. Individual never-available days (both halves
-  // unticked), though, the grid can express directly, so
-  // overrides are checked against those below.
-  const restDays = schedule.rest_days ?? [];
+  // days_available and rest_days are no longer raw-intake fields (ADR 017 -
+  // the resolver always derives them from the availability grid +
+  // runner.experience) and long_run_day is an optional override, so an
+  // unset grid/override is "let RunDrafter decide", not a validation
+  // failure. A preferred session landing on a resolver-derived rest day can
+  // only be caught once the resolver has run (validate.py's
+  // _validate_resolved_schedule), which this form can't do; an
+  // under-constrained grid is generally a resolver-side warning
+  // (SCHEDULE_UNDER_CONSTRAINED) this form can't check either - except the
+  // 5-or-more-unticked-days case handled as a warning below, which is
+  // guaranteed regardless of what the resolver decides. Individual
+  // never-available days (both halves unticked), though, the grid can
+  // express directly, so overrides are checked against those below.
   const unavailableDays = getUnavailableDays(schedule);
 
   if (schedule.long_run_day && unavailableDays.includes(schedule.long_run_day)) {
     errors.push(
       `Long run day (${schedule.long_run_day}) has both halves unticked in the availability grid.`,
-    );
-  }
-
-  if (restDays.length > 0) {
-    const restDaysMissingUnavailable = unavailableDays.filter(
-      (day) => !restDays.includes(day),
-    );
-    if (restDaysMissingUnavailable.length > 0) {
-      errors.push(
-        `Rest days must include ${restDaysMissingUnavailable.join(", ")}: both halves are unticked in the availability grid.`,
-      );
-    }
-  }
-
-  const preferredOnRestDay = [
-    ...new Set(
-      (schedule.preferred_sessions ?? [])
-        .map((session) => session?.day)
-        .filter((day) => day && restDays.includes(day)),
-    ),
-  ];
-  if (preferredOnRestDay.length > 0) {
-    errors.push(
-      `Preferred session day(s) ${preferredOnRestDay.join(", ")} fall on a rest day.`,
     );
   }
 
@@ -247,20 +228,32 @@ function validateCrossField(formState) {
     );
   }
 
-  // Anchor sessions require both distance and effort (dependentRequired in
-  // the schema); catch a lopsided pair here with a message naming the row,
-  // rather than letting it fall through to a row-index Ajv error.
-  for (const session of schedule.preferred_sessions ?? []) {
-    const hasDistance = session?.distance !== undefined && session?.distance !== null;
-    const hasEffort = session?.effort !== undefined && session?.effort !== null && session?.effort !== "";
-    if (hasDistance !== hasEffort) {
-      const label = session?.description || session?.day || "session";
+  errors.push(
+    ...validateSessionRanges(schedule.preferred_sessions, "Weekly session"),
+  );
+  errors.push(...validateSessionRanges(formState.other_events, "Other event"));
+
+  return errors;
+}
+
+// Mirrors validate.py's _validate_session_ranges: distance_max must be >=
+// distance_min when both are given, on both preferred_sessions and
+// other_events rows.
+function validateSessionRanges(entries, label) {
+  const errors = [];
+  for (const entry of entries ?? []) {
+    const min = entry?.distance_min;
+    const max = entry?.distance_max;
+    if (min === undefined || min === null || max === undefined || max === null) {
+      continue;
+    }
+    if (max < min) {
+      const rowLabel = entry.description || entry.day || entry.date || "session";
       errors.push(
-        `Preferred session "${label}" needs both distance and effort to become an anchor session — fill in both or leave both blank.`,
+        `${label} "${rowLabel}": maximum distance (${max}) must be >= minimum distance (${min}).`,
       );
     }
   }
-
   return errors;
 }
 
@@ -296,24 +289,20 @@ export function assemble(formState, { now } = {}) {
   const errors = validateCrossField(formState);
   const warnings = validateWarnings(formState);
 
-  const strengthCross = pruneStrengthCross(formState.strength_cross);
   const bRaces = pruneRepeatingSection(formState.b_races);
   const otherEvents = pruneRepeatingSection(formState.other_events);
   const notes = pruneOptionalObject(formState.notes);
   const weeklySchedule = pruneWeeklySchedule(formState.weekly_schedule);
-  const preferences = pruneOptionalObject(formState.preferences);
+  const recentResult = pruneOptionalObject(formState.recent_result);
 
   const intake = {
     meta: { schema_version: "1", submitted_at: timestamp },
     units: formState.units,
     runner: omitEmpty(formState.runner ?? {}),
-    goal: omitEmpty(formState.goal ?? {}),
-    recent_result: omitEmpty(formState.recent_result ?? {}),
+    goal: resolveGoal(formState.goal),
     current_fitness: omitEmpty(formState.current_fitness ?? {}),
+    ...(recentResult && { recent_result: recentResult }),
     ...(weeklySchedule && { weekly_schedule: weeklySchedule }),
-    ...(strengthCross && { strength_cross: strengthCross }),
-    ...(preferences && { preferences }),
-    consent: pruneConsent(formState.consent, timestamp),
     ...(bRaces && { b_races: bRaces }),
     ...(otherEvents && { other_events: otherEvents }),
     ...(notes && { notes }),

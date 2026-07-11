@@ -6,7 +6,6 @@
   "units": "km",
   "runner": {
     "name": "Alex Smith",
-    "age": 38,
     "experience": "experienced"
   },
   "goal": {
@@ -33,19 +32,11 @@
     },
     "long_run_day": "Sunday",
     "preferred_sessions": [
-      {"day": "Tuesday", "description": "intervals with running club"},
-      {"day": "Saturday", "description": "parkrun", "distance": 5, "effort": "threshold"}
+      {"day": "Tuesday", "type": "quality", "description": "intervals with running club"},
+      {"day": "Saturday", "type": "quality", "description": "parkrun", "distance_min": 5},
+      {"day": "Wednesday", "type": "strength", "description": "gym weights and core", "distance_max": 0},
+      {"day": "Friday", "type": "strength", "description": "gym weights and core", "distance_max": 0}
     ]
-  },
-  "strength_cross": {
-    "strength_per_week": 2,
-    "strength_days": ["Wednesday", "Friday"],
-    "strength_type": "gym weights and core",
-    "warmup_jog": false
-  },
-  "consent": {
-    "disclaimer_accepted": true,
-    "accepted_at": "2026-06-22T09:15:00+10:00"
   },
   "b_races": [
     {
@@ -57,9 +48,11 @@
   ],
   "other_events": [
     {
-      "name": "Bridge to Brisbane",
-      "distance": "10k",
-      "date": "2026-08-16"
+      "date": "2026-08-16",
+      "type": "race",
+      "description": "Bridge to Brisbane",
+      "distance_min": 10,
+      "distance_max": 10
     }
   ],
   "notes": {

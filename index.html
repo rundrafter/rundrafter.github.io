@@ -37,11 +37,13 @@
 
           <section aria-labelledby="runner-heading">
             <h3 id="runner-heading">Runner</h3>
-            <label for="runner-name">Name</label>
-            <input id="runner-name" name="runner.name" type="text" required />
-
-            <label for="runner-age">Age (optional)</label>
-            <input id="runner-age" name="runner.age" type="number" min="0" step="1" />
+            <label for="runner-name">Plan Title (optional)</label>
+            <input
+              id="runner-name"
+              name="runner.name"
+              type="text"
+              placeholder="e.g. Spring marathon block, Club coaching plan"
+            />
 
             <label for="runner-experience">Running experience</label>
             <select id="runner-experience" name="runner.experience" required>
@@ -53,9 +55,15 @@
           </section>
 
           <section aria-labelledby="recent-result-heading">
-            <h3 id="recent-result-heading">Recent result</h3>
+            <h3 id="recent-result-heading">Recent result (optional)</h3>
+            <p>
+              If you have a recent race or time-trial result, share it to
+              calibrate your training paces. New to running or don't have
+              one? Leave this blank - RunDrafter will use conservative
+              default paces for your experience level instead.
+            </p>
             <label for="recent-result-distance">Distance</label>
-            <select id="recent-result-distance" name="recent_result.distance" required>
+            <select id="recent-result-distance" name="recent_result.distance">
               <option value="5k">5 km race</option>
               <option value="10k">10 km race</option>
               <option value="half">Half marathon</option>
@@ -63,10 +71,10 @@
             </select>
 
             <label for="recent-result-time">Time (M:SS or H:MM:SS)</label>
-            <input id="recent-result-time" name="recent_result.time" type="text" required />
+            <input id="recent-result-time" name="recent_result.time" type="text" />
 
             <label for="recent-result-date">Date</label>
-            <input id="recent-result-date" name="recent_result.date" type="date" required />
+            <input id="recent-result-date" name="recent_result.date" type="date" />
           </section>
 
           <section aria-labelledby="fitness-heading">
@@ -106,15 +114,6 @@
               step="any"
             />
           </section>
-
-          <section aria-labelledby="consent-heading">
-            <h3 id="consent-heading">Consent</h3>
-            <label>
-              <input type="checkbox" name="consent.disclaimer_accepted" required />
-              I have read and accept the disclaimer: this is training guidance,
-              not medical advice. See a professional for pain or injury.
-            </label>
-          </section>
         </div>
 
         <div class="stage" aria-labelledby="stage-2-heading">
@@ -136,8 +135,30 @@
             <label for="goal-date">Race date</label>
             <input id="goal-date" name="goal.date" type="date" required />
 
-            <label for="goal-target-time">Target time (H:MM:SS, or "finish")</label>
-            <input id="goal-target-time" name="goal.target_time" type="text" required />
+            <fieldset>
+              <legend>Target time</legend>
+              <label>
+                <input
+                  type="radio"
+                  name="goal.target_time_mode"
+                  value="specific"
+                  checked
+                />
+                A specific time
+              </label>
+              <label for="goal-target-time">
+                Time (H:MM:SS)
+                <input id="goal-target-time" name="goal.target_time" type="text" />
+              </label>
+              <label>
+                <input type="radio" name="goal.target_time_mode" value="finish" />
+                Just finish
+              </label>
+              <label>
+                <input type="radio" name="goal.target_time_mode" value="suggest" />
+                Suggest a realistic time for me
+              </label>
+            </fieldset>
 
             <label for="goal-start-date">Plan start date</label>
             <input id="goal-start-date" name="goal.start_date" type="date" required />
@@ -173,37 +194,6 @@
               <label>
                 Target time (H:MM:SS, optional)
                 <input type="text" name="b_races.__INDEX__.target_time" />
-              </label>
-              <button type="button" data-remove-row>Remove</button>
-            </fieldset>
-          </template>
-
-          <section aria-labelledby="other-events-heading">
-            <h3 id="other-events-heading">Other events</h3>
-            <p>Optional - events you'll take part in but not race.</p>
-            <div id="other-events-list"></div>
-            <button type="button" id="add-other-event">Add other event</button>
-          </section>
-
-          <template id="other-event-template">
-            <fieldset class="repeating-row">
-              <legend>Other event</legend>
-              <label>
-                Name
-                <input type="text" name="other_events.__INDEX__.name" required />
-              </label>
-              <label>
-                Distance
-                <select name="other_events.__INDEX__.distance" required>
-                  <option value="5k">5 km</option>
-                  <option value="10k">10 km</option>
-                  <option value="half">Half marathon</option>
-                  <option value="marathon">Marathon</option>
-                </select>
-              </label>
-              <label>
-                Date
-                <input type="date" name="other_events.__INDEX__.date" required />
               </label>
               <button type="button" data-remove-row>Remove</button>
             </fieldset>
@@ -288,34 +278,25 @@
             </select>
 
             <fieldset>
-              <legend>Rest days (optional override)</legend>
-              <p>Leave unticked to let RunDrafter choose your rest days.</p>
-              <label><input type="checkbox" name="weekly_schedule.rest_days" value="Monday" /> Monday</label>
-              <label><input type="checkbox" name="weekly_schedule.rest_days" value="Tuesday" /> Tuesday</label>
-              <label><input type="checkbox" name="weekly_schedule.rest_days" value="Wednesday" /> Wednesday</label>
-              <label><input type="checkbox" name="weekly_schedule.rest_days" value="Thursday" /> Thursday</label>
-              <label><input type="checkbox" name="weekly_schedule.rest_days" value="Friday" /> Friday</label>
-              <label><input type="checkbox" name="weekly_schedule.rest_days" value="Saturday" /> Saturday</label>
-              <label><input type="checkbox" name="weekly_schedule.rest_days" value="Sunday" /> Sunday</label>
-            </fieldset>
-
-            <fieldset>
-              <legend>Preferred sessions</legend>
+              <legend>Weekly session template</legend>
               <p>
-                Recurring running sessions the plan should schedule around, e.g.
-                a weekly parkrun or a club run. Fill in both distance and effort
-                to make an entry an anchor session - a fixed-distance,
-                fixed-effort commitment the plan eases off before races or
-                late in the taper.
+                Pin broad session types to specific days - e.g. a Tuesday
+                quality session, a Saturday long run, a Sunday recovery jog,
+                a weekly parkrun. Tick <strong>skip tailoring</strong> on a
+                day you (or a coach) will write the specifics for yourself;
+                RunDrafter still fits it into the volume curve and taper, it
+                just won't prescribe paces or reps for that day. Set maximum
+                distance to 0 for a non-running day (e.g. pure strength or
+                cross-training).
               </p>
-              <div id="preferred-sessions-list"></div>
-              <button type="button" id="add-preferred-session">Add preferred session</button>
+              <div id="weekly-session-list"></div>
+              <button type="button" id="add-weekly-session">Add weekly session</button>
             </fieldset>
           </section>
 
-          <template id="preferred-session-template">
+          <template id="weekly-session-template">
             <fieldset class="repeating-row">
-              <legend>Preferred session</legend>
+              <legend>Weekly session</legend>
               <label>
                 Day
                 <select name="weekly_schedule.preferred_sessions.__INDEX__.day" required>
@@ -329,108 +310,115 @@
                 </select>
               </label>
               <label>
-                Description
+                Type
+                <select name="weekly_schedule.preferred_sessions.__INDEX__.type" required>
+                  <option value=""></option>
+                  <option value="easy">Easy</option>
+                  <option value="quality">Quality (hard session)</option>
+                  <option value="recovery">Recovery</option>
+                  <option value="long">Long run</option>
+                  <option value="strength">Strength</option>
+                  <option value="cross_training">Cross-training</option>
+                  <option value="race">Race</option>
+                </select>
+              </label>
+              <label>
+                Description (optional)
                 <input
                   type="text"
                   name="weekly_schedule.preferred_sessions.__INDEX__.description"
-                  placeholder="e.g. club run"
-                  required
+                  placeholder="e.g. parkrun, club intervals"
                 />
               </label>
               <label>
-                Distance (<span data-unit-label>km</span>, optional)
+                Minimum distance (<span data-unit-label>km</span>, optional)
                 <input
                   type="number"
-                  name="weekly_schedule.preferred_sessions.__INDEX__.distance"
+                  name="weekly_schedule.preferred_sessions.__INDEX__.distance_min"
                   min="0"
                   step="any"
                 />
               </label>
               <label>
-                Effort (optional)
-                <select name="weekly_schedule.preferred_sessions.__INDEX__.effort">
-                  <option value=""></option>
-                  <option value="easy">Easy</option>
-                  <option value="threshold">Threshold</option>
-                </select>
+                Maximum distance (<span data-unit-label>km</span>, optional)
+                <input
+                  type="number"
+                  name="weekly_schedule.preferred_sessions.__INDEX__.distance_max"
+                  min="0"
+                  step="any"
+                />
               </label>
-              <p class="help-text">
-                Fill in both distance and effort to turn this into a scheduled
-                anchor session.
-              </p>
+              <label data-skip-tailoring-for="quality strength long cross_training">
+                <input
+                  type="checkbox"
+                  name="weekly_schedule.preferred_sessions.__INDEX__.skip_tailoring"
+                />
+                Skip tailoring - I'll fill in the specifics myself
+              </label>
               <button type="button" data-remove-row>Remove</button>
             </fieldset>
           </template>
 
-          <section aria-labelledby="strength-heading">
-            <h3 id="strength-heading">Strength and cross-training</h3>
-            <p>Optional - describes non-running training you already do.</p>
-            <label for="strength-per-week">Strength sessions per week</label>
-            <input id="strength-per-week" name="strength_cross.strength_per_week" type="number" min="0" step="1" />
-
-            <fieldset>
-              <legend>Strength session days</legend>
-              <label><input type="checkbox" name="strength_cross.strength_days" value="Monday" /> Monday</label>
-              <label><input type="checkbox" name="strength_cross.strength_days" value="Tuesday" /> Tuesday</label>
-              <label><input type="checkbox" name="strength_cross.strength_days" value="Wednesday" /> Wednesday</label>
-              <label><input type="checkbox" name="strength_cross.strength_days" value="Thursday" /> Thursday</label>
-              <label><input type="checkbox" name="strength_cross.strength_days" value="Friday" /> Friday</label>
-              <label><input type="checkbox" name="strength_cross.strength_days" value="Saturday" /> Saturday</label>
-              <label><input type="checkbox" name="strength_cross.strength_days" value="Sunday" /> Sunday</label>
-            </fieldset>
-
-            <label for="strength-type">Strength work description</label>
-            <input
-              id="strength-type"
-              name="strength_cross.strength_type"
-              type="text"
-              placeholder="e.g. gym weights and core"
-            />
-
-            <label>
-              <input type="checkbox" name="strength_cross.warmup_jog" />
-              I do a warm-up jog before strength sessions
-            </label>
-
-            <fieldset>
-              <legend>Cross-training (optional)</legend>
-              <label for="cross-training-type">Type</label>
-              <input
-                id="cross-training-type"
-                name="strength_cross.cross_training.type"
-                type="text"
-                placeholder="e.g. cycling, swimming"
-              />
-
-              <label for="cross-training-frequency">Frequency</label>
-              <input
-                id="cross-training-frequency"
-                name="strength_cross.cross_training.frequency"
-                type="text"
-                placeholder="e.g. once a week"
-              />
-            </fieldset>
+          <section aria-labelledby="other-events-heading">
+            <h3 id="other-events-heading">Other events</h3>
+            <p>
+              Optional - one-off events you'll take part in but not race, e.g.
+              a charity fun run or a club social. No de-load is inserted; the
+              plan folds the event into that day's easy or long run.
+            </p>
+            <div id="other-events-list"></div>
+            <button type="button" id="add-other-event">Add other event</button>
           </section>
 
-          <section aria-labelledby="preferences-heading">
-            <h3 id="preferences-heading">Preferences</h3>
-            <fieldset>
-              <legend>Calibrate training paces to</legend>
+          <template id="other-event-template">
+            <fieldset class="repeating-row">
+              <legend>Other event</legend>
               <label>
-                <input type="radio" name="preferences.calibrate_to" value="" checked />
-                Let RunDrafter decide
+                Date
+                <input type="date" name="other_events.__INDEX__.date" required />
               </label>
               <label>
-                <input type="radio" name="preferences.calibrate_to" value="current" />
-                Current fitness
+                Type
+                <select name="other_events.__INDEX__.type" required>
+                  <option value=""></option>
+                  <option value="easy">Easy</option>
+                  <option value="quality">Quality (hard session)</option>
+                  <option value="recovery">Recovery</option>
+                  <option value="long">Long run</option>
+                  <option value="strength">Strength</option>
+                  <option value="cross_training">Cross-training</option>
+                  <option value="race">Race</option>
+                </select>
               </label>
               <label>
-                <input type="radio" name="preferences.calibrate_to" value="goal" />
-                Goal pace
+                Description (optional)
+                <input
+                  type="text"
+                  name="other_events.__INDEX__.description"
+                  placeholder="e.g. charity fun run"
+                />
               </label>
+              <label>
+                Minimum distance (<span data-unit-label>km</span>, optional)
+                <input
+                  type="number"
+                  name="other_events.__INDEX__.distance_min"
+                  min="0"
+                  step="any"
+                />
+              </label>
+              <label>
+                Maximum distance (<span data-unit-label>km</span>, optional)
+                <input
+                  type="number"
+                  name="other_events.__INDEX__.distance_max"
+                  min="0"
+                  step="any"
+                />
+              </label>
+              <button type="button" data-remove-row>Remove</button>
             </fieldset>
-
-          </section>
+          </template>
 
           <section aria-labelledby="notes-heading">
             <h3 id="notes-heading">Notes</h3>

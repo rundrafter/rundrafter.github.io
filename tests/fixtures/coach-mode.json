@@ -1,0 +1,58 @@
+{
+  "units": "km",
+  "runner": {
+    "name": "Riverside Running Club - Jordan Lee",
+    "experience": "returning"
+  },
+  "goal": {
+    "race": "City Half Marathon",
+    "distance": "half",
+    "date": "2026-10-04",
+    "target_time": "1:45:00",
+    "start_date": "2026-07-13"
+  },
+  "recent_result": {
+    "distance": "10k",
+    "time": "48:30",
+    "date": "2026-06-20"
+  },
+  "current_fitness": { "weekly_distance": 35, "longest_run": 14 },
+  "weekly_schedule": {
+    "long_run_day": "Saturday",
+    "preferred_sessions": [
+      {
+        "day": "Tuesday",
+        "type": "quality",
+        "description": "Coach-written interval session - specifics off-plan",
+        "distance_min": 8,
+        "distance_max": 12,
+        "skip_tailoring": true
+      },
+      {
+        "day": "Wednesday",
+        "type": "strength",
+        "description": "Gym session with the squad's strength coach",
+        "distance_max": 0,
+        "skip_tailoring": true
+      },
+      {
+        "day": "Thursday",
+        "type": "cross_training",
+        "description": "Pool swim - coach's cross-training plan",
+        "distance_max": 0,
+        "skip_tailoring": true
+      },
+      {
+        "day": "Saturday",
+        "type": "long",
+        "description": "Long run - coach sets the exact distance week to week",
+        "distance_min": 16,
+        "distance_max": 20,
+        "skip_tailoring": true
+      }
+    ]
+  },
+  "notes": {
+    "other": "Coach mode: RunDrafter owns the easy days and volume curve; the squad coach writes Tuesday/Wednesday/Thursday/Saturday off-plan."
+  }
+}
