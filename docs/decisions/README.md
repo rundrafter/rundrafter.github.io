@@ -11,3 +11,4 @@ See `.fieldkit/conventions/decisions.md` for the format.
 | 004 | [Host as an org GitHub Pages site at the root URL](004-org-pages-root-hosting.md)      | Accepted |
 | 005 | [Remove the health-screen step and its consent gate](005-remove-health-screening.md)   | Accepted |
 | 006 | [Remove the injury-history section and `build_mode`](006-remove-injury-input.md)       | Accepted |
+| 007 | [Mirror coach mode and the intake simplification](007-mirror-coach-mode-and-intake-simplification.md) | Accepted |
