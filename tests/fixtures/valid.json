@@ -1,9 +1,6 @@
 {
   "units": "km",
-  "runner": {
-    "name": "Test Runner",
-    "experience": "experienced"
-  },
+  "runner": { "name": "Test Runner", "experience": "experienced" },
   "goal": {
     "race": "Melbourne Marathon",
     "distance": "marathon",
@@ -18,8 +15,6 @@
   },
   "current_fitness": { "weekly_distance": 40, "longest_run": 18 },
   "weekly_schedule": {
-    "long_run_day": "Sunday",
-    "rest_days": ["Monday"]
-  },
-  "consent": { "disclaimer_accepted": true }
+    "long_run_day": "Sunday"
+  }
 }

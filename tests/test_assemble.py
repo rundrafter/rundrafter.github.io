@@ -53,22 +53,6 @@ def test_valid_state_has_no_errors(page: Page) -> None:
     assert_schema_valid(result["intake"])
 
 
-def test_disclaimer_gate_blocks_without_acceptance(page: Page) -> None:
-    """Declining the disclaimer blocks handoff."""
-    state = valid_state()
-    state["consent"] = {"disclaimer_accepted": False}
-    result = run_assemble(page, state)
-    assert any("disclaimer" in e.lower() for e in result["errors"])
-
-
-def test_disclaimer_gate_blocks_when_missing(page: Page) -> None:
-    """A missing consent section blocks handoff."""
-    state = valid_state()
-    del state["consent"]
-    result = run_assemble(page, state)
-    assert any("disclaimer" in e.lower() for e in result["errors"])
-
-
 def test_start_date_after_goal_date_blocks(page: Page) -> None:
     """A plan start date after the race date blocks handoff."""
     state = valid_state()
@@ -93,6 +77,7 @@ def test_b_race_on_or_after_goal_date_blocks(page: Page) -> None:
             "name": "Tune-up 10k",
             "distance": "10k",
             "date": state["goal"]["date"],
+            "target_time": "45:00",
         }
     ]
     result = run_assemble(page, state)
@@ -103,7 +88,12 @@ def test_b_race_before_goal_date_passes(page: Page) -> None:
     """A B race before the goal race date is allowed."""
     state = valid_state()
     state["b_races"] = [
-        {"name": "Tune-up 10k", "distance": "10k", "date": "2026-08-01"}
+        {
+            "name": "Tune-up 10k",
+            "distance": "10k",
+            "date": "2026-08-01",
+            "target_time": "45:00",
+        }
     ]
     result = run_assemble(page, state)
     assert result["errors"] == []
@@ -115,9 +105,9 @@ def test_other_event_on_or_after_goal_date_blocks(page: Page) -> None:
     state = valid_state()
     state["other_events"] = [
         {
-            "name": "Charity fun run",
-            "distance": "5k",
             "date": state["goal"]["date"],
+            "type": "easy",
+            "description": "Charity fun run",
         }
     ]
     result = run_assemble(page, state)
@@ -149,6 +139,7 @@ def test_b_race_on_start_date_blocks(page: Page) -> None:
             "name": "Tune-up 10k",
             "distance": "10k",
             "date": state["goal"]["start_date"],
+            "target_time": "45:00",
         }
     ]
     result = run_assemble(page, state)
@@ -159,7 +150,7 @@ def test_other_event_before_start_date_blocks(page: Page) -> None:
     """An other event before the plan start date blocks handoff."""
     state = valid_state()
     state["other_events"] = [
-        {"name": "Charity fun run", "distance": "5k", "date": "2026-01-01"}
+        {"date": "2026-01-01", "type": "easy", "description": "Charity fun run"}
     ]
     result = run_assemble(page, state)
     assert any("other event" in e.lower() for e in result["errors"])
@@ -169,7 +160,7 @@ def test_other_event_within_window_passes(page: Page) -> None:
     """An other event strictly between start_date and goal.date is allowed."""
     state = valid_state()
     state["other_events"] = [
-        {"name": "Bridge to Brisbane", "distance": "10k", "date": "2026-08-16"}
+        {"date": "2026-08-16", "type": "easy", "description": "Bridge to Brisbane"}
     ]
     result = run_assemble(page, state)
     assert result["errors"] == []
@@ -181,40 +172,18 @@ def test_duplicate_event_dates_blocks(page: Page) -> None:
     state = valid_state()
     shared_date = "2026-08-16"
     state["b_races"] = [
-        {"name": "Tune-up 10k", "distance": "10k", "date": shared_date}
+        {
+            "name": "Tune-up 10k",
+            "distance": "10k",
+            "date": shared_date,
+            "target_time": "45:00",
+        }
     ]
     state["other_events"] = [
-        {"name": "Bridge to Brisbane", "distance": "10k", "date": shared_date}
+        {"date": shared_date, "type": "easy", "description": "Bridge to Brisbane"}
     ]
     result = run_assemble(page, state)
     assert any("shares a date" in e.lower() for e in result["errors"])
-
-
-def test_long_run_day_on_rest_day_blocks(page: Page) -> None:
-    """A long run day that's also a rest day blocks handoff."""
-    state = valid_state()
-    state["weekly_schedule"]["long_run_day"] = "Monday"
-    result = run_assemble(page, state)
-    assert any("long run day" in e.lower() for e in result["errors"])
-
-
-def test_long_run_day_off_rest_day_passes(page: Page) -> None:
-    """A long run day that isn't a rest day is allowed."""
-    result = run_assemble(page, valid_state())
-    assert result["errors"] == []
-    assert_schema_valid(result["intake"])
-
-
-def test_rest_days_empty_lets_rundrafter_decide(page: Page) -> None:
-    """An empty rest_days override is pruned entirely rather than emitted as
-    `[]` - the resolver picks rest days itself when the runner leaves this
-    override blank."""
-    state = valid_state()
-    state["weekly_schedule"]["rest_days"] = []
-    result = run_assemble(page, state)
-    assert result["errors"] == []
-    assert "rest_days" not in result["intake"]["weekly_schedule"]
-    assert_schema_valid(result["intake"])
 
 
 def test_long_run_day_on_unavailable_day_blocks(page: Page) -> None:
@@ -228,87 +197,60 @@ def test_long_run_day_on_unavailable_day_blocks(page: Page) -> None:
     assert any("long run day" in e.lower() for e in result["errors"])
 
 
-def test_rest_days_omitting_unavailable_day_blocks(page: Page) -> None:
-    """A rest_days override that omits a fully-unticked day blocks handoff."""
-    state = valid_state()
-    state["weekly_schedule"]["availability"] = {
-        "Tuesday": {"morning": False, "evening": False}
-    }
-    result = run_assemble(page, state)
-    assert any("rest day" in e.lower() and "tuesday" in e.lower() for e in result["errors"])
-
-
-def test_rest_days_covering_unavailable_day_passes(page: Page) -> None:
-    """A rest_days override that covers every fully-unticked day is allowed."""
-    state = valid_state()
-    state["weekly_schedule"]["availability"] = {
-        "Tuesday": {"morning": False, "evening": False}
-    }
-    state["weekly_schedule"]["rest_days"] = ["Monday", "Tuesday"]
-    result = run_assemble(page, state)
-    assert result["errors"] == []
-    assert_schema_valid(result["intake"])
-
-
 def test_preferred_session_on_unavailable_day_blocks(page: Page) -> None:
-    """A preferred session on a fully-unticked day blocks handoff."""
+    """A weekly session on a fully-unticked day blocks handoff."""
     state = valid_state()
     state["weekly_schedule"]["availability"] = {
         "Tuesday": {"morning": False, "evening": False}
     }
     state["weekly_schedule"]["preferred_sessions"] = [
-        {"day": "Tuesday", "description": "tempo"}
+        {"day": "Tuesday", "type": "quality", "description": "tempo"}
     ]
     result = run_assemble(page, state)
     assert any("preferred session" in e.lower() for e in result["errors"])
 
 
 def test_preferred_session_off_unavailable_day_passes(page: Page) -> None:
-    """A preferred session scheduled on an available day is allowed."""
+    """A weekly session scheduled on an available day is allowed."""
     state = valid_state()
     state["weekly_schedule"]["availability"] = {
         "Tuesday": {"morning": False, "evening": False}
     }
-    state["weekly_schedule"]["rest_days"] = ["Monday", "Tuesday"]
     state["weekly_schedule"]["preferred_sessions"] = [
-        {"day": "Wednesday", "description": "intervals"}
+        {"day": "Wednesday", "type": "quality", "description": "intervals"}
     ]
     result = run_assemble(page, state)
     assert result["errors"] == []
     assert_schema_valid(result["intake"])
 
 
-def test_preferred_session_distance_without_effort_blocks(page: Page) -> None:
-    """A preferred session with distance but no effort blocks with a friendly
-    message naming the row, rather than a raw Ajv dependentRequired error."""
-    state = valid_state()
-    state["weekly_schedule"]["preferred_sessions"] = [
-        {"day": "Wednesday", "description": "parkrun", "distance": 5}
-    ]
-    result = run_assemble(page, state)
-    assert any("parkrun" in e and "anchor session" in e for e in result["errors"])
-
-
-def test_preferred_session_effort_without_distance_blocks(page: Page) -> None:
-    """A preferred session with effort but no distance blocks the same way."""
-    state = valid_state()
-    state["weekly_schedule"]["preferred_sessions"] = [
-        {"day": "Wednesday", "description": "parkrun", "effort": "easy"}
-    ]
-    result = run_assemble(page, state)
-    assert any("parkrun" in e and "anchor session" in e for e in result["errors"])
-
-
-def test_preferred_session_with_both_distance_and_effort_passes(page: Page) -> None:
-    """A preferred session with both distance and effort is a valid anchor
-    session and does not block."""
+def test_preferred_session_distance_max_below_min_blocks(page: Page) -> None:
+    """A weekly session with a maximum distance below its minimum blocks
+    with a friendly message naming the row (mirrors DISTANCE_RANGE_INVALID)."""
     state = valid_state()
     state["weekly_schedule"]["preferred_sessions"] = [
         {
             "day": "Wednesday",
+            "type": "quality",
             "description": "parkrun",
-            "distance": 5,
-            "effort": "easy",
+            "distance_min": 10,
+            "distance_max": 5,
+        }
+    ]
+    result = run_assemble(page, state)
+    assert any("parkrun" in e and "distance" in e.lower() for e in result["errors"])
+
+
+def test_preferred_session_distance_range_valid_passes(page: Page) -> None:
+    """A weekly session whose maximum distance is >= its minimum is allowed."""
+    state = valid_state()
+    state["weekly_schedule"]["preferred_sessions"] = [
+        {
+            "day": "Wednesday",
+            "type": "quality",
+            "description": "parkrun",
+            "distance_min": 5,
+            "distance_max": 5,
         }
     ]
     result = run_assemble(page, state)
@@ -316,25 +258,21 @@ def test_preferred_session_with_both_distance_and_effort_passes(page: Page) -> N
     assert_schema_valid(result["intake"])
 
 
-def test_preferred_session_on_rest_day_blocks(page: Page) -> None:
-    """A preferred session scheduled on a rest day blocks handoff."""
+def test_other_event_distance_max_below_min_blocks(page: Page) -> None:
+    """An other event with a maximum distance below its minimum blocks the
+    same way as a weekly session."""
     state = valid_state()
-    state["weekly_schedule"]["preferred_sessions"] = [
-        {"day": "Monday", "description": "easy jog"}
+    state["other_events"] = [
+        {
+            "date": "2026-08-16",
+            "type": "easy",
+            "description": "long run",
+            "distance_min": 10,
+            "distance_max": 5,
+        }
     ]
     result = run_assemble(page, state)
-    assert any("preferred session" in e.lower() for e in result["errors"])
-
-
-def test_preferred_session_off_rest_day_passes(page: Page) -> None:
-    """A preferred session scheduled on a non-rest day is allowed."""
-    state = valid_state()
-    state["weekly_schedule"]["preferred_sessions"] = [
-        {"day": "Wednesday", "description": "intervals"}
-    ]
-    result = run_assemble(page, state)
-    assert result["errors"] == []
-    assert_schema_valid(result["intake"])
+    assert any("long run" in e and "distance" in e.lower() for e in result["errors"])
 
 
 def test_recent_result_stale_warns_without_blocking(page: Page) -> None:
@@ -361,13 +299,6 @@ def test_five_unavailable_days_warns_without_blocking(page: Page) -> None:
         day: {"morning": False, "evening": False}
         for day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
     }
-    state["weekly_schedule"]["rest_days"] = [
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-    ]
     result = run_assemble(page, state)
     assert result["errors"] == []
     assert any("trainable" in w.lower() for w in result["warnings"])
@@ -382,12 +313,6 @@ def test_four_unavailable_days_does_not_warn(page: Page) -> None:
         day: {"morning": False, "evening": False}
         for day in ["Monday", "Tuesday", "Wednesday", "Thursday"]
     }
-    state["weekly_schedule"]["rest_days"] = [
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-    ]
     result = run_assemble(page, state)
     assert result["errors"] == []
     assert result["warnings"] == []
@@ -395,23 +320,16 @@ def test_four_unavailable_days_does_not_warn(page: Page) -> None:
 
 
 def test_timestamps_set_at_handoff(page: Page) -> None:
-    """submitted_at and accepted_at are stamped with the handoff time."""
+    """submitted_at is stamped with the handoff time."""
     result = run_assemble(page, valid_state(), now="2026-03-15T09:30:00.000Z")
     assert result["intake"]["meta"]["submitted_at"] == "2026-03-15T09:30:00.000Z"
-    assert result["intake"]["consent"]["accepted_at"] == "2026-03-15T09:30:00.000Z"
 
 
 def test_blank_optional_sections_are_omitted(page: Page) -> None:
     """Optional sections left blank are omitted, not emitted as empty objects."""
     result = run_assemble(page, valid_state())
     intake = result["intake"]
-    for key in (
-        "strength_cross",
-        "preferences",
-        "b_races",
-        "other_events",
-        "notes",
-    ):
+    for key in ("b_races", "other_events", "notes"):
         assert key not in intake
 
 
@@ -430,6 +348,28 @@ def test_golden_fixture_reproduces_intake_example(page: Page) -> None:
     assert result["errors"] == []
     assert result["intake"] == example
     assert_schema_valid(result["intake"])
+
+
+def test_coach_mode_fixture_assembles_and_validates(page: Page) -> None:
+    """A coach-mode form-state (skip-tailored sessions with a distance range,
+    plus a distance_max: 0 non-running day) assembles cleanly and validates
+    (ADR 014)."""
+    result = run_assemble(page, load_fixture("coach-mode.json"))
+    assert result["errors"] == []
+    assert_schema_valid(result["intake"])
+    sessions = result["intake"]["weekly_schedule"]["preferred_sessions"]
+    assert all(session["tailored"] is False for session in sessions)
+    assert any(session.get("distance_max") == 0 for session in sessions)
+
+
+def test_beginner_fixture_assembles_and_validates(page: Page) -> None:
+    """A beginner form-state (no recent_result, target_time: suggest)
+    assembles cleanly and validates (ADR 015 / ADR 016)."""
+    result = run_assemble(page, load_fixture("beginner.json"))
+    assert result["errors"] == []
+    assert_schema_valid(result["intake"])
+    assert "recent_result" not in result["intake"]
+    assert result["intake"]["goal"]["target_time"] == "suggest"
 
 
 def test_dom_smoke_fill_download_validates(page: Page) -> None:
@@ -451,9 +391,6 @@ def test_dom_smoke_fill_download_validates(page: Page) -> None:
     page.fill("#fitness-longest-run", "18")
 
     page.select_option("#schedule-long-run-day", "Sunday")
-    page.check('input[name="weekly_schedule.rest_days"][value="Monday"]')
-
-    page.check('input[name="consent.disclaimer_accepted"]')
 
     with page.expect_download() as download_info:
         page.click('button[type="submit"]')
@@ -482,9 +419,6 @@ def test_empty_required_field_shows_inline_error(page: Page) -> None:
     page.fill("#fitness-longest-run", "18")
 
     page.select_option("#schedule-long-run-day", "Sunday")
-    page.check('input[name="weekly_schedule.rest_days"][value="Monday"]')
-
-    page.check('input[name="consent.disclaimer_accepted"]')
 
     # goal.race is left blank.
     page.click('button[type="submit"]')

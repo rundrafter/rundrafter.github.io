@@ -87,6 +87,22 @@ def test_golden_fixture_passes_stage1(tmp_path: Path, page: Page) -> None:
     assert_passes_stage1(tmp_path, result["intake"], "golden")
 
 
+def test_coach_mode_fixture_passes_stage1(tmp_path: Path, page: Page) -> None:
+    """The coach-mode fixture (skip-tailored sessions) clears the real
+    stage-1 validator (ADR 014)."""
+    result = run_assemble(page, load_fixture("coach-mode.json"))
+    assert result["errors"] == []
+    assert_passes_stage1(tmp_path, result["intake"], "coach-mode")
+
+
+def test_beginner_fixture_passes_stage1(tmp_path: Path, page: Page) -> None:
+    """The beginner fixture (no recent_result, target_time: suggest) clears
+    the real stage-1 validator (ADR 015 / ADR 016)."""
+    result = run_assemble(page, load_fixture("beginner.json"))
+    assert result["errors"] == []
+    assert_passes_stage1(tmp_path, result["intake"], "beginner")
+
+
 def test_dom_smoke_download_passes_stage1(tmp_path: Path, page: Page) -> None:
     """A real form fill-and-download clears the real stage-1 validator."""
     page.fill("#runner-name", "Alex Smith")
@@ -106,9 +122,6 @@ def test_dom_smoke_download_passes_stage1(tmp_path: Path, page: Page) -> None:
     page.fill("#fitness-longest-run", "18")
 
     page.select_option("#schedule-long-run-day", "Sunday")
-    page.check('input[name="weekly_schedule.rest_days"][value="Monday"]')
-
-    page.check('input[name="consent.disclaimer_accepted"]')
 
     with page.expect_download() as download_info:
         page.click('button[type="submit"]')

@@ -98,9 +98,6 @@ def test_success_screen_after_valid_submission(page: Page) -> None:
     page.fill("#fitness-longest-run", "18")
 
     page.select_option("#schedule-long-run-day", "Sunday")
-    page.check('input[name="weekly_schedule.rest_days"][value="Monday"]')
-
-    page.check('input[name="consent.disclaimer_accepted"]')
 
     with page.expect_download():
         page.click('button[type="submit"]')
