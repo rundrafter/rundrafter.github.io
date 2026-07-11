@@ -8,9 +8,7 @@ export default {
     "units",
     "runner",
     "goal",
-    "recent_result",
-    "current_fitness",
-    "consent"
+    "current_fitness"
   ],
   "additionalProperties": false,
   "$defs": {
@@ -25,6 +23,18 @@ export default {
           "type": "boolean"
         }
       }
+    },
+    "broad_session_type": {
+      "type": "string",
+      "enum": [
+        "easy",
+        "quality",
+        "recovery",
+        "long",
+        "strength",
+        "cross_training",
+        "race"
+      ]
     }
   },
   "properties": {
@@ -55,7 +65,6 @@ export default {
     "runner": {
       "type": "object",
       "required": [
-        "name",
         "experience"
       ],
       "additionalProperties": false,
@@ -63,10 +72,6 @@ export default {
         "name": {
           "type": "string",
           "minLength": 1
-        },
-        "age": {
-          "type": "integer",
-          "minimum": 0
         },
         "experience": {
           "type": "string",
@@ -107,7 +112,7 @@ export default {
         },
         "target_time": {
           "type": "string",
-          "pattern": "^([0-9]+:[0-5][0-9]:[0-5][0-9]|[0-9]+:[0-5][0-9]|finish)$"
+          "pattern": "^([0-9]+:[0-5][0-9]:[0-5][0-9]|[0-9]+:[0-5][0-9]|finish|suggest)$"
         },
         "start_date": {
           "type": "string",
@@ -208,39 +213,15 @@ export default {
             "Sunday"
           ]
         },
-        "rest_days": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "enum": [
-              "Monday",
-              "Tuesday",
-              "Wednesday",
-              "Thursday",
-              "Friday",
-              "Saturday",
-              "Sunday"
-            ]
-          },
-          "minItems": 1
-        },
         "preferred_sessions": {
           "type": "array",
           "items": {
             "type": "object",
             "required": [
               "day",
-              "description"
+              "type"
             ],
             "additionalProperties": false,
-            "dependentRequired": {
-              "distance": [
-                "effort"
-              ],
-              "effort": [
-                "distance"
-              ]
-            },
             "properties": {
               "day": {
                 "type": "string",
@@ -254,96 +235,26 @@ export default {
                   "Sunday"
                 ]
               },
+              "type": {
+                "$ref": "#/$defs/broad_session_type"
+              },
               "description": {
                 "type": "string"
               },
-              "distance": {
+              "distance_min": {
                 "type": "number",
-                "exclusiveMinimum": 0
+                "minimum": 0
               },
-              "effort": {
-                "type": "string",
-                "enum": [
-                  "easy",
-                  "threshold"
-                ]
+              "distance_max": {
+                "type": "number",
+                "minimum": 0
+              },
+              "tailored": {
+                "type": "boolean",
+                "default": true
               }
             }
           }
-        }
-      }
-    },
-    "strength_cross": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "strength_per_week": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "strength_days": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "enum": [
-              "Monday",
-              "Tuesday",
-              "Wednesday",
-              "Thursday",
-              "Friday",
-              "Saturday",
-              "Sunday"
-            ]
-          }
-        },
-        "strength_type": {
-          "type": "string"
-        },
-        "warmup_jog": {
-          "type": "boolean"
-        },
-        "cross_training": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "type": {
-              "type": "string"
-            },
-            "frequency": {
-              "type": "string"
-            }
-          }
-        }
-      }
-    },
-    "preferences": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "calibrate_to": {
-          "type": "string",
-          "enum": [
-            "current",
-            "goal"
-          ]
-        }
-      }
-    },
-    "consent": {
-      "type": "object",
-      "required": [
-        "disclaimer_accepted"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "disclaimer_accepted": {
-          "type": "boolean"
-        },
-        "terms_accepted": {
-          "type": "boolean"
-        },
-        "accepted_at": {
-          "type": "string"
         }
       }
     },
@@ -372,7 +283,8 @@ export default {
         "required": [
           "name",
           "distance",
-          "date"
+          "date",
+          "target_time"
         ],
         "additionalProperties": false,
         "properties": {
@@ -403,27 +315,28 @@ export default {
       "items": {
         "type": "object",
         "required": [
-          "name",
-          "distance",
-          "date"
+          "date",
+          "type"
         ],
         "additionalProperties": false,
         "properties": {
-          "name": {
-            "type": "string"
-          },
-          "distance": {
-            "type": "string",
-            "enum": [
-              "5k",
-              "10k",
-              "half",
-              "marathon"
-            ]
-          },
           "date": {
             "type": "string",
             "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+          },
+          "type": {
+            "$ref": "#/$defs/broad_session_type"
+          },
+          "description": {
+            "type": "string"
+          },
+          "distance_min": {
+            "type": "number",
+            "minimum": 0
+          },
+          "distance_max": {
+            "type": "number",
+            "minimum": 0
           }
         }
       }
