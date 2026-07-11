@@ -263,9 +263,9 @@ if (form) {
   form.addEventListener("submit", handleSubmit);
   const updateUnitLabels = setupUnitLabels(form);
   setupRepeatingGroup(
-    "preferred-sessions-list",
-    "preferred-session-template",
-    "add-preferred-session",
+    "weekly-session-list",
+    "weekly-session-template",
+    "add-weekly-session",
     { onRowAdded: () => updateUnitLabels() },
   );
   setupRepeatingGroup("b-races-list", "b-race-template", "add-b-race", {

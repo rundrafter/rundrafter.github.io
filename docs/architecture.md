@@ -48,20 +48,19 @@ Summary of the intake object's top level (see the schema for exact types):
 | ----------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `meta`            | system    | `schema_version: "1"`, `submitted_at` (ISO 8601) set at handoff time — not a form field                                                                                                                                    |
 | `units`           | yes       | radio km/mi; controls distance labels, does **not** convert values                                                                                                                                                         |
-| `runner`          | yes       | name (req), age (opt), experience (req) — no `sex` field                                                                                                                                                                   |
-| `goal`            | yes       | race, distance, date, target_time, start_date                                                                                                                                                                              |
-| `recent_result`   | yes       | distance, time, date                                                                                                                                                                                                       |
+| `runner`          | yes       | name (opt, "Plan Title" in form prose), experience (req) — no `age`, no `sex` field                                                                                                                                        |
+| `goal`            | yes       | race, distance, date, start_date; `target_time` resolved from a three-way radio — a specific `H:MM:SS`, `"finish"`, or `"suggest"` (ADR 016)                                                                               |
+| `recent_result`   | optional  | distance, time, date — a total beginner with no result may leave the whole group blank (ADR 015); `calibrate.py` falls back to conservative defaults                                                                      |
 | `current_fitness` | yes       | weekly_distance, longest_run, recent_peak_weekly (opt)                                                                                                                                                                     |
-| `weekly_schedule` | optional  | availability grid (morning/evening per weekday, all ticked by default), long_run_day (opt override), rest_days (opt override, multi), preferred_sessions (repeating) — absent entirely leaves the schedule to the resolver |
-| `strength_cross`  | optional  | strength_per_week, strength_days, strength_type, warmup_jog, cross_training{type,frequency}                                                                                                                                |
-| `preferences`     | optional  | calibrate_to (radio, default "Let RunDrafter decide")                                                                                                                                                                      |
-| `consent`         | yes       | disclaimer_accepted (req), terms_accepted (opt), accepted_at (system)                                                                                                                                                      |
+| `weekly_schedule` | optional  | availability grid (morning/evening per weekday, all ticked by default), long_run_day (opt override), preferred_sessions — the **weekly session template** (repeating): day, type (broad-type enum), description (opt), distance_min/distance_max (opt; `distance_max: 0` = no running), tailored (opt, default true — the "skip tailoring" tickbox emits `false`). No `rest_days` override any more (ADR 017) — the resolver always derives rest days. Absent entirely leaves the schedule to the resolver. |
 | `b_races`         | optional  | repeating (≤3): name, distance, date, target_time                                                                                                                                                                          |
-| `other_events`    | optional  | repeating: name, distance, date                                                                                                                                                                                            |
+| `other_events`    | optional  | repeating: date, type (same broad-type enum as `preferred_sessions`), description (opt), distance_min/distance_max (opt) — restructured from a race-shaped record to a dated template entry (ADR 017)                     |
 | `notes`           | optional  | other (textarea)                                                                                                                                                                                                           |
 
 `progress` exists in the schema for phase-3 re-planning and is **not**
-collected by this form.
+collected by this form. `strength_cross`, `preferences`, `consent`, `age`,
+and the `rest_days` override were removed from the contract (ADR 017) and
+are no longer collected.
 
 Every optional section above is sparse by construction: `assemble.js` omits
 it entirely rather than emitting an empty or partial object when the runner
@@ -82,11 +81,9 @@ accepts never bounces back from the pipeline.
 ### Blocking (`errors`)
 
 - **Empty-object pruning.** Never emit an optional section as an empty or
-  partial object. If the runner leaves `runner`, `strength_cross`,
-  `cross_training`, `b_races`, `other_events`, or `notes` blank, omit the key
-  entirely — an empty `{}` can violate `required`/`additionalProperties`.
-- **Disclaimer gate.** `consent.disclaimer_accepted` must be `true` to hand
-  off.
+  partial object. If the runner leaves `runner`, `recent_result`, `b_races`,
+  `other_events`, or `notes` blank, omit the key entirely — an empty `{}` can
+  violate `required`/`additionalProperties`.
 - **Date ordering** (mirrors `_validate_date_ordering`):
   - `goal.start_date` strictly `<` `goal.date` (`DATE_ORDER_START_AFTER_GOAL`).
   - `recent_result.date` `≤` `goal.start_date` (`DATE_ORDER_RESULT_AFTER_START`).
@@ -95,37 +92,34 @@ accepts never bounces back from the pipeline.
   - No two events, across `b_races` and `other_events` combined, share a date
     (`DUPLICATE_EVENT_DATE`).
 - **Schedule** (mirrors `_validate_schedule`, checked only against the
-  *explicit overrides* the runner gave — `days_available` isn't a raw-intake
-  field any more, so there's nothing to check pre-resolution):
-  - `weekly_schedule.long_run_day` must not be in `rest_days`
-    (`LONG_RUN_DAY_IS_REST`).
-  - No `preferred_sessions[].day` falls on a rest day
-    (`PREFERRED_SESSION_ON_REST_DAY`).
-  - A `preferred_sessions[]` entry needs both `distance` and `effort` to
-    become an anchor session — one without the other blocks with a message
-    naming the row (schema-level `dependentRequired`, given a friendly
-    message here rather than a raw Ajv error).
+  *explicit overrides* the runner gave — `days_available` and `rest_days`
+  aren't raw-intake fields any more (ADR 017), so there's nothing to check
+  pre-resolution for those):
+  - `distance_max` must be `>= distance_min` when both are given, on both
+    `weekly_schedule.preferred_sessions[]` and `other_events[]` entries
+    (`DISTANCE_RANGE_INVALID`).
   - A day whose grid has both halves unticked (see `pruneAvailability`'s
     "absent = available" default) is never a running day; unlike a
     trainable-day *count*, the grid expresses this directly, so it's
     checked against every explicit override:
     - `weekly_schedule.long_run_day` must not be a fully-unticked day
       (`LONG_RUN_DAY_UNAVAILABLE`).
-    - An explicit `rest_days` override must cover every fully-unticked day
-      (`REST_DAYS_OMIT_UNAVAILABLE_DAY`).
     - No `preferred_sessions[].day` falls on a fully-unticked day
       (`PREFERRED_SESSION_ON_UNAVAILABLE_DAY`).
-- **Timestamps.** Set `meta.submitted_at` and `consent.accepted_at`
-  (ISO 8601) at the moment of handoff, not earlier.
+  - A preferred session landing on a resolver-derived rest day
+    (`PREFERRED_SESSION_ON_REST_DAY`) can only be caught once the resolver
+    has run (`_validate_resolved_schedule`); this form has no client-side
+    resolver, so that check is **not** form-checkable any more (it was, back
+    when `rest_days` was a raw override the form could compare against
+    directly).
+- **Timestamps.** Set `meta.submitted_at` (ISO 8601) at the moment of
+  handoff, not earlier.
 
-An empty `weekly_schedule.rest_days` override is **not** an error — it's
-pruned to "absent" (see empty-object/array pruning above) and means "let
-RunDrafter decide". `weekly_schedule.days_available ≥ 3` isn't enforced here
-any more either: the availability grid can't express a trainable-day count
-directly, so an under-constrained grid is instead a **resolver**-side
-warning (`SCHEDULE_UNDER_CONSTRAINED` in `validate.py`) this form generally
-can't check without running the resolver — except the over-constrained-grid
-case below, which is form-checkable.
+`weekly_schedule.days_available ≥ 3` isn't enforced here: the availability
+grid can't express a trainable-day count directly, so an under-constrained
+grid is instead a **resolver**-side warning (`SCHEDULE_UNDER_CONSTRAINED` in
+`validate.py`) this form generally can't check without running the resolver —
+except the over-constrained-grid case below, which is form-checkable.
 
 ### Non-blocking (`warnings`)
 
@@ -157,7 +151,7 @@ index.html                  # the form, semantic sections, no inline logic
 assets/
   styles.css                # responsive, theme-aware, accessible labels
   form.js                   # DOM wiring: render sections, repeating add/remove,
-                            #   conditional consent, gather form-state
+                            #   gather form-state
   assemble.js               # PURE ES module: formState -> intake object, with
                             #   pruning + cross-field validation (returns
                             #   errors + warnings)
@@ -259,9 +253,9 @@ intercept downloads and `mailto:` navigation).
 - **Assembler tests** (`tests/test_assemble.py`): feed form-state fixtures
   into `assemble.js` in-page, assert the assembled object validates against
   the vendored schema (via Python's `jsonschema`, already a dependency), and
-  assert each cross-field rule fires (pruning, disclaimer gate, date
-  ordering + event-window + duplicate-date + schedule override rules,
-  anchor-session pairing) and each warning fires (stale recent result).
+  assert each cross-field rule fires (pruning, date ordering + event-window +
+  duplicate-date + schedule override + distance-range rules) and each
+  warning fires (stale recent result).
 - **Golden reproduction:** a fixture reproduces `schema/intake-example.json`'s
   structure from a plausible form-state, proving the form can emit the
   reference shape.
