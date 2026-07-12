@@ -7,8 +7,7 @@
     "meta",
     "units",
     "runner",
-    "goal",
-    "current_fitness"
+    "goal"
   ],
   "additionalProperties": false,
   "$defs": {
@@ -98,8 +97,8 @@
       "required": ["weekly_distance", "longest_run"],
       "additionalProperties": false,
       "properties": {
-        "weekly_distance": { "type": "number", "exclusiveMinimum": 0 },
-        "longest_run": { "type": "number", "exclusiveMinimum": 0 },
+        "weekly_distance": { "type": "number", "minimum": 0 },
+        "longest_run": { "type": "number", "minimum": 0 },
         "recent_peak_weekly": { "type": "number", "exclusiveMinimum": 0 }
       }
     },

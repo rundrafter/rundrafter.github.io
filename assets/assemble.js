@@ -294,13 +294,14 @@ export function assemble(formState, { now } = {}) {
   const notes = pruneOptionalObject(formState.notes);
   const weeklySchedule = pruneWeeklySchedule(formState.weekly_schedule);
   const recentResult = pruneOptionalObject(formState.recent_result);
+  const currentFitness = pruneOptionalObject(formState.current_fitness);
 
   const intake = {
     meta: { schema_version: "1", submitted_at: timestamp },
     units: formState.units,
     runner: omitEmpty(formState.runner ?? {}),
     goal: resolveGoal(formState.goal),
-    current_fitness: omitEmpty(formState.current_fitness ?? {}),
+    ...(currentFitness && { current_fitness: currentFitness }),
     ...(recentResult && { recent_result: recentResult }),
     ...(weeklySchedule && { weekly_schedule: weeklySchedule }),
     ...(bRaces && { b_races: bRaces }),
