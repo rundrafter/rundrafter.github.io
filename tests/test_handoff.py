@@ -97,8 +97,6 @@ def test_success_screen_after_valid_submission(page: Page) -> None:
     page.fill("#fitness-weekly-distance", "40")
     page.fill("#fitness-longest-run", "18")
 
-    page.select_option("#schedule-long-run-day", "Sunday")
-
     with page.expect_download():
         page.click('button[type="submit"]')
 

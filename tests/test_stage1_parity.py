@@ -121,8 +121,6 @@ def test_dom_smoke_download_passes_stage1(tmp_path: Path, page: Page) -> None:
     page.fill("#fitness-weekly-distance", "40")
     page.fill("#fitness-longest-run", "18")
 
-    page.select_option("#schedule-long-run-day", "Sunday")
-
     with page.expect_download() as download_info:
         page.click('button[type="submit"]')
 

@@ -186,15 +186,33 @@ def test_duplicate_event_dates_blocks(page: Page) -> None:
     assert any("shares a date" in e.lower() for e in result["errors"])
 
 
-def test_long_run_day_on_unavailable_day_blocks(page: Page) -> None:
-    """A long run day with both halves unticked in the grid blocks handoff."""
+def test_long_run_entry_on_unavailable_day_blocks(page: Page) -> None:
+    """A `type: "long"` weekly session on a fully-unticked day blocks
+    handoff (ADR 019 - long_run_day is gone; the template entry is the only
+    override)."""
     state = valid_state()
     state["weekly_schedule"]["availability"] = {
         "Tuesday": {"morning": False, "evening": False}
     }
-    state["weekly_schedule"]["long_run_day"] = "Tuesday"
+    state["weekly_schedule"]["preferred_sessions"] = [
+        {"day": "Tuesday", "type": "long"}
+    ]
     result = run_assemble(page, state)
-    assert any("long run day" in e.lower() for e in result["errors"])
+    assert any('type: "long"' in e for e in result["errors"])
+
+
+def test_multiple_long_entries_blocks(page: Page) -> None:
+    """More than one `type: "long"` weekly session blocks handoff - at most
+    one is allowed to pin the long-run day (ADR 019)."""
+    state = valid_state()
+    state["weekly_schedule"]["preferred_sessions"] = [
+        {"day": "Sunday", "type": "long"},
+        {"day": "Saturday", "type": "long"},
+    ]
+    result = run_assemble(page, state)
+    assert any(
+        "more than one" in e and 'type: "long"' in e for e in result["errors"]
+    )
 
 
 def test_preferred_session_on_unavailable_day_blocks(page: Page) -> None:
@@ -403,8 +421,6 @@ def test_dom_smoke_fill_download_validates(page: Page) -> None:
     page.fill("#fitness-weekly-distance", "40")
     page.fill("#fitness-longest-run", "18")
 
-    page.select_option("#schedule-long-run-day", "Sunday")
-
     with page.expect_download() as download_info:
         page.click('button[type="submit"]')
 
@@ -428,8 +444,6 @@ def test_dom_smoke_blank_recent_result_omits_section(page: Page) -> None:
     page.fill("#fitness-weekly-distance", "40")
     page.fill("#fitness-longest-run", "18")
 
-    page.select_option("#schedule-long-run-day", "Sunday")
-
     with page.expect_download() as download_info:
         page.click('button[type="submit"]')
 
@@ -450,8 +464,6 @@ def test_dom_smoke_blank_current_fitness_omits_section(page: Page) -> None:
     page.fill("#goal-date", "2026-10-11")
     page.check('input[name="goal.target_time_mode"][value="suggest"]')
     page.fill("#goal-start-date", "2026-06-01")
-
-    page.select_option("#schedule-long-run-day", "Sunday")
 
     with page.expect_download() as download_info:
         page.click('button[type="submit"]')
@@ -479,8 +491,6 @@ def test_empty_required_field_shows_inline_error(page: Page) -> None:
 
     page.fill("#fitness-weekly-distance", "40")
     page.fill("#fitness-longest-run", "18")
-
-    page.select_option("#schedule-long-run-day", "Sunday")
 
     # goal.race is left blank.
     page.click('button[type="submit"]')
