@@ -399,6 +399,32 @@ def test_dom_smoke_fill_download_validates(page: Page) -> None:
     assert_schema_valid(downloaded)
 
 
+def test_dom_smoke_blank_recent_result_omits_section(page: Page) -> None:
+    """Leaving Recent Result entirely untouched in the real form - relying on
+    the select's blank default rather than an explicit choice - downloads an
+    intake.json with no `recent_result` key, and it still validates."""
+    page.fill("#runner-name", "Alex Smith")
+    page.select_option("#runner-experience", "experienced")
+
+    page.fill("#goal-race", "Melbourne Marathon")
+    page.select_option("#goal-distance", "marathon")
+    page.fill("#goal-date", "2026-10-11")
+    page.fill("#goal-target-time", "3:45:00")
+    page.fill("#goal-start-date", "2026-06-01")
+
+    page.fill("#fitness-weekly-distance", "40")
+    page.fill("#fitness-longest-run", "18")
+
+    page.select_option("#schedule-long-run-day", "Sunday")
+
+    with page.expect_download() as download_info:
+        page.click('button[type="submit"]')
+
+    downloaded = json.loads(Path(download_info.value.path()).read_text())
+    assert "recent_result" not in downloaded
+    assert_schema_valid(downloaded)
+
+
 def test_empty_required_field_shows_inline_error(page: Page) -> None:
     """Submitting with a required field left blank (novalidate lets it reach
     Ajv) shows a `.field-error` right next to that field, not just a
