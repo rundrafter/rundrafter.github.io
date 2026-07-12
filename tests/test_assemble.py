@@ -372,6 +372,19 @@ def test_beginner_fixture_assembles_and_validates(page: Page) -> None:
     assert result["intake"]["goal"]["target_time"] == "suggest"
 
 
+def test_blank_current_fitness_omits_section(page: Page) -> None:
+    """A runner with no honest weekly-distance/longest-run figure to give may
+    leave the whole Current Fitness group blank; the assembled intake omits
+    `current_fitness` entirely rather than emitting a partial object, and
+    still validates (ADR 018)."""
+    state = valid_state()
+    del state["current_fitness"]
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert_schema_valid(result["intake"])
+    assert "current_fitness" not in result["intake"]
+
+
 def test_dom_smoke_fill_download_validates(page: Page) -> None:
     """Filling the real form and submitting downloads a schema-valid intake.json."""
     page.fill("#runner-name", "Alex Smith")
@@ -422,6 +435,29 @@ def test_dom_smoke_blank_recent_result_omits_section(page: Page) -> None:
 
     downloaded = json.loads(Path(download_info.value.path()).read_text())
     assert "recent_result" not in downloaded
+    assert_schema_valid(downloaded)
+
+
+def test_dom_smoke_blank_current_fitness_omits_section(page: Page) -> None:
+    """Leaving both Current Fitness fields blank in the real form - now that
+    neither is `required` (ADR 018) - downloads an intake.json with no
+    `current_fitness` key, and it still validates."""
+    page.fill("#runner-name", "Alex Smith")
+    page.select_option("#runner-experience", "new")
+
+    page.fill("#goal-race", "Riverside Fun Run")
+    page.select_option("#goal-distance", "10k")
+    page.fill("#goal-date", "2026-10-11")
+    page.check('input[name="goal.target_time_mode"][value="suggest"]')
+    page.fill("#goal-start-date", "2026-06-01")
+
+    page.select_option("#schedule-long-run-day", "Sunday")
+
+    with page.expect_download() as download_info:
+        page.click('button[type="submit"]')
+
+    downloaded = json.loads(Path(download_info.value.path()).read_text())
+    assert "current_fitness" not in downloaded
     assert_schema_valid(downloaded)
 
 

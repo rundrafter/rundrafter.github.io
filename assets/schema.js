@@ -7,8 +7,7 @@ export default {
     "meta",
     "units",
     "runner",
-    "goal",
-    "current_fitness"
+    "goal"
   ],
   "additionalProperties": false,
   "$defs": {
@@ -157,11 +156,11 @@ export default {
       "properties": {
         "weekly_distance": {
           "type": "number",
-          "exclusiveMinimum": 0
+          "minimum": 0
         },
         "longest_run": {
           "type": "number",
-          "exclusiveMinimum": 0
+          "minimum": 0
         },
         "recent_peak_weekly": {
           "type": "number",
