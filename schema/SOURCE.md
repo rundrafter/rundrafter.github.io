@@ -7,7 +7,7 @@ Vendored from the upstream `rundrafter` repo's intake contract:
 
 Pinned upstream revision:
 
-revision: 9b691fc8fb073a7970a32f9a3cab7ace3eda920c
+revision: 3229881a39b9e615d9ecaf25726f9b635de7cbd8
 
 Re-sync with `just sync-contract` (`uv run python scripts/sync_contract.py`).
 
@@ -19,7 +19,7 @@ The cross-field rules in `assets/assemble.js` mirror upstream
 revision is pinned, checked by `just check-contract` against the sibling
 checkout.
 
-rules_revision: 9e81780dd0aac1ea49b620f80fceaf7bce15246e
+rules_revision: 3229881a39b9e615d9ecaf25726f9b635de7cbd8
 
 After syncing assemble.js (and docs/architecture.md) to a rule change
 upstream, run `uv run python scripts/sync_contract.py --update-rules-revision`
