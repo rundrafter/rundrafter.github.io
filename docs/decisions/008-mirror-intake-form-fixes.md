@@ -1,4 +1,4 @@
-# 008 - Mirror the intake form fixes (current fitness optional; long run in the weekly template)
+# 008 - Mirror the current-fitness and long-run fixes
 
 ## Decision
 
