@@ -59,10 +59,12 @@ function pruneAvailability(availability) {
 }
 
 // Prunes weekly_schedule to an override-only object: the availability grid
-// keeps only unticked half-days, long_run_day/preferred_sessions drop when
-// left on "let RunDrafter decide", and the whole section is omitted when
-// nothing was overridden. There is no `rest_days` override any more (ADR
-// 017) - the resolver always derives rest days.
+// keeps only unticked half-days, preferred_sessions drops when left on
+// "let RunDrafter decide", and the whole section is omitted when nothing was
+// overridden. There is no `rest_days` override any more (ADR 017) - the
+// resolver always derives rest days. There is likewise no separate
+// `long_run_day` override (ADR 019) - a `type: "long"` preferred_sessions
+// entry is the only way to pin the long-run day.
 function pruneWeeklySchedule(schedule) {
   if (!schedule) return undefined;
   const { availability, ...rest } = mapPreferredSessions(omitEmpty(schedule));
@@ -196,10 +198,9 @@ function validateCrossField(formState) {
 
   // days_available and rest_days are no longer raw-intake fields (ADR 017 -
   // the resolver always derives them from the availability grid +
-  // runner.experience) and long_run_day is an optional override, so an
-  // unset grid/override is "let RunDrafter decide", not a validation
-  // failure. A preferred session landing on a resolver-derived rest day can
-  // only be caught once the resolver has run (validate.py's
+  // runner.experience), so an unset grid is "let RunDrafter decide", not a
+  // validation failure. A preferred session landing on a resolver-derived
+  // rest day can only be caught once the resolver has run (validate.py's
   // _validate_resolved_schedule), which this form can't do; an
   // under-constrained grid is generally a resolver-side warning
   // (SCHEDULE_UNDER_CONSTRAINED) this form can't check either - except the
@@ -209,9 +210,27 @@ function validateCrossField(formState) {
   // express directly, so overrides are checked against those below.
   const unavailableDays = getUnavailableDays(schedule);
 
-  if (schedule.long_run_day && unavailableDays.includes(schedule.long_run_day)) {
+  // There is no `long_run_day` override field any more (ADR 019) - a
+  // `type: "long"` entry in preferred_sessions is the only way to pin the
+  // long-run day, so at most one is allowed, and the same unavailable-day
+  // check that used to apply to the removed field now applies to that entry
+  // (mirrors validate.py's _validate_schedule).
+  const longEntries = (schedule.preferred_sessions ?? []).filter(
+    (session) => session?.type === "long",
+  );
+  if (longEntries.length > 1) {
     errors.push(
-      `Long run day (${schedule.long_run_day}) has both halves unticked in the availability grid.`,
+      'weekly_schedule.preferred_sessions has more than one type: "long"' +
+        " entry; at most one is allowed to pin the long-run day.",
+    );
+  } else if (
+    longEntries.length === 1 &&
+    unavailableDays.includes(longEntries[0].day)
+  ) {
+    errors.push(
+      `The type: "long" preferred session (${longEntries[0].day}) has both` +
+        " halves unticked in the availability grid, so the runner is never" +
+        " available to run that day.",
     );
   }
 

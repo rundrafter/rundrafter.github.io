@@ -269,29 +269,19 @@
               </table>
             </fieldset>
 
-            <label for="schedule-long-run-day">Long run day (optional override)</label>
-            <select id="schedule-long-run-day" name="weekly_schedule.long_run_day">
-              <option value="">Let RunDrafter decide</option>
-              <option value="Monday">Monday</option>
-              <option value="Tuesday">Tuesday</option>
-              <option value="Wednesday">Wednesday</option>
-              <option value="Thursday">Thursday</option>
-              <option value="Friday">Friday</option>
-              <option value="Saturday">Saturday</option>
-              <option value="Sunday">Sunday</option>
-            </select>
-
             <fieldset>
               <legend>Weekly session template</legend>
               <p>
                 Pin broad session types to specific days - e.g. a Tuesday
                 quality session, a Saturday long run, a Sunday recovery jog,
-                a weekly parkrun. Tick <strong>skip tailoring</strong> on a
-                day you (or a coach) will write the specifics for yourself;
-                RunDrafter still fits it into the volume curve and taper, it
-                just won't prescribe paces or reps for that day. Set maximum
-                distance to 0 for a non-running day (e.g. pure strength or
-                cross-training).
+                a weekly parkrun. Add a <strong>Long run</strong> entry to pin
+                your long-run day - at most one is allowed; leave it out and
+                RunDrafter picks the day for you. Tick
+                <strong>skip tailoring</strong> on a day you (or a coach) will
+                write the specifics for yourself; RunDrafter still fits it
+                into the volume curve and taper, it just won't prescribe
+                paces or reps for that day. Set maximum distance to 0 for a
+                non-running day (e.g. pure strength or cross-training).
               </p>
               <div id="weekly-session-list"></div>
               <button type="button" id="add-weekly-session">Add weekly session</button>
