@@ -12,3 +12,4 @@ See `.fieldkit/conventions/decisions.md` for the format.
 | 005 | [Remove the health-screen step and its consent gate](005-remove-health-screening.md)                  | Accepted |
 | 006 | [Remove the injury-history section and `build_mode`](006-remove-injury-input.md)                      | Accepted |
 | 007 | [Mirror coach mode and the intake simplification](007-mirror-coach-mode-and-intake-simplification.md) | Accepted |
+| 008 | [Mirror the intake form fixes (current fitness optional; long run in the weekly template)](008-mirror-intake-form-fixes.md) | Proposed |
