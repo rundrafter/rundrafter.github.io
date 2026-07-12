@@ -199,18 +199,6 @@ export default {
             }
           }
         },
-        "long_run_day": {
-          "type": "string",
-          "enum": [
-            "Monday",
-            "Tuesday",
-            "Wednesday",
-            "Thursday",
-            "Friday",
-            "Saturday",
-            "Sunday"
-          ]
-        },
         "preferred_sessions": {
           "type": "array",
           "items": {

@@ -18,7 +18,6 @@
   },
   "current_fitness": { "weekly_distance": 35, "longest_run": 14 },
   "weekly_schedule": {
-    "long_run_day": "Saturday",
     "preferred_sessions": [
       {
         "day": "Tuesday",

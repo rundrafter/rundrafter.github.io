@@ -30,8 +30,8 @@
       "Tuesday": {"morning": false},
       "Thursday": {"morning": false}
     },
-    "long_run_day": "Sunday",
     "preferred_sessions": [
+      {"day": "Sunday", "type": "long"},
       {"day": "Tuesday", "type": "quality", "description": "intervals with running club"},
       {"day": "Saturday", "type": "quality", "description": "parkrun", "distance_min": 5},
       {"day": "Wednesday", "type": "strength", "description": "gym weights and core", "distance_max": 0},
