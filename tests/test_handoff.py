@@ -117,3 +117,20 @@ def test_success_screen_after_valid_submission(page: Page) -> None:
         page.click("#download-again")
     downloaded = json.loads(Path(download_again_info.value.path()).read_text())
     assert downloaded["goal"]["race"] == "Melbourne Marathon"
+
+
+def test_race_not_offered_as_a_session_type(page: Page) -> None:
+    """Race is a goal/B-race concept, not a weekly-template or other-event
+    type - neither repeating-row template should offer it (build plan issue
+    4)."""
+    page.click("#add-weekly-session")
+    weekly_type = page.locator(
+        '#weekly-session-list select[name$=".type"]'
+    ).first
+    assert weekly_type.locator('option[value="race"]').count() == 0
+
+    page.click("#add-other-event")
+    other_event_type = page.locator(
+        '#other-events-list select[name$=".type"]'
+    ).first
+    assert other_event_type.locator('option[value="race"]').count() == 0

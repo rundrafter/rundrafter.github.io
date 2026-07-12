@@ -49,7 +49,7 @@
   "other_events": [
     {
       "date": "2026-08-16",
-      "type": "race",
+      "type": "easy",
       "description": "Bridge to Brisbane",
       "distance_min": 10,
       "distance_max": 10

@@ -32,8 +32,7 @@ export default {
         "recovery",
         "long",
         "strength",
-        "cross_training",
-        "race"
+        "cross_training"
       ]
     }
   },

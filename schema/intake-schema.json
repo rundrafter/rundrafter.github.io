@@ -23,8 +23,7 @@
     "broad_session_type": {
       "type": "string",
       "enum": [
-        "easy", "quality", "recovery", "long", "strength", "cross_training",
-        "race"
+        "easy", "quality", "recovery", "long", "strength", "cross_training"
       ]
     }
   },
