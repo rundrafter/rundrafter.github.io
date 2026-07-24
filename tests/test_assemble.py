@@ -1,8 +1,8 @@
 """Assembler test suite: cross-field rules (T4), fixtures + smoke test (T5).
 
 Drives assemble.js and the real form in a browser via Playwright, per
-docs/architecture.md: same module + logic the shipped page uses, not a
-second implementation of the rules.
+rundrafter's docs/webform-architecture.md: same module + logic the shipped
+page uses, not a second implementation of the rules.
 """
 
 from __future__ import annotations

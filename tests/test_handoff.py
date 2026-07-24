@@ -1,7 +1,8 @@
 """Email handoff suite (T6): mailto composition + the success screen.
 
-Drives the real handoff.js and index.html in a browser, per
-docs/architecture.md, so the same module the shipped page uses is under test.
+Drives the real handoff.js and index.html in a browser, per rundrafter's
+docs/webform-architecture.md, so the same module the shipped page uses is
+under test.
 """
 
 from __future__ import annotations
@@ -62,7 +63,7 @@ def test_mailto_recipient_and_defaults(page: Page) -> None:
 
 
 def test_mailto_subject_includes_runner_name_and_race(page: Page) -> None:
-    """Subject is composed from runner.name + goal.race per ADR 003."""
+    """Subject is composed from runner.name + goal.race per rundrafter's ADR 027."""
     result = build_mailto_url(
         page,
         {"runner": {"name": "Alex Smith"}, "goal": {"race": "Melbourne Marathon"}},
