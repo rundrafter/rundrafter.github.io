@@ -134,8 +134,9 @@ function getUnavailableDays(schedule) {
 // resolver adds rest days, but that isn't form-checkable.
 const MIN_TRAINABLE_DAYS = 3;
 
-// Cross-field product rules the schema can't express (see docs/architecture.md).
-// Mirrors rundrafter's stage 1 (validate.py / contracts.md) rule-for-rule.
+// Cross-field product rules the schema can't express (see rundrafter's
+// docs/webform-architecture.md). Mirrors rundrafter's stage 1
+// (validate.py / contracts.md) rule-for-rule.
 // Returns human-readable messages; an empty array means the rules all pass.
 function validateCrossField(formState) {
   const errors = [];
@@ -276,7 +277,8 @@ function validateSessionRanges(entries, label) {
   return errors;
 }
 
-// Non-blocking advisories (see docs/architecture.md's "Non-blocking" rules).
+// Non-blocking advisories (see rundrafter's docs/webform-architecture.md's
+// "Non-blocking" rules).
 function validateWarnings(formState) {
   const warnings = [];
   const goal = formState.goal ?? {};

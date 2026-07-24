@@ -5,9 +5,15 @@ a static, client-side page that collects a runner's details and assembles
 them into an `intake.json` for download. No backend: the runner emails the
 file back, and it's fed into the RunDrafter pipeline manually.
 
-This is phase 2 of RunDrafter's delivery plan - see
-[`docs/spec/structure-and-phasing.md`](https://github.com/rundrafter/rundrafter/blob/main/docs/spec/structure-and-phasing.md)
-in the main repo for the full roadmap and rationale.
+Live at <https://rundrafter.github.io/>. This is phase 2 of RunDrafter's
+delivery plan; for the architecture, design rationale, and how this form fits
+the wider pipeline, see the main
+[`rundrafter`](https://github.com/rundrafter/rundrafter) repo's
+[`docs/webform-architecture.md`](https://github.com/rundrafter/rundrafter/blob/main/docs/webform-architecture.md)
+and ADRs 025-032 in
+[`docs/decisions/`](https://github.com/rundrafter/rundrafter/tree/main/docs/decisions) -
+this repo intentionally keeps very little documentation of its own, since
+it's public and a runner filling in the form has no reason to see it.
 
 ## Contract
 
@@ -28,7 +34,8 @@ contract here.
 
 No node or npm anywhere in this repo — all tooling is Python, via
 [`uv`](https://docs.astral.sh/uv/) and [`just`](https://just.systems/). See
-[ADR 001](docs/decisions/001-vanilla-no-build-step.md) for why.
+[ADR 025](https://github.com/rundrafter/rundrafter/blob/main/docs/decisions/025-webform-vanilla-no-build-step.md)
+for why.
 
 ```sh
 just serve            # serve the form at http://localhost:8000
@@ -39,7 +46,7 @@ just check            # lint + test
 
 The page needs a static server rather than `file://` — Chrome refuses
 module-script fetches for `file://` documents, so `just serve` (or GitHub
-Pages once deployed) is required even for local use.
+Pages, in production) is required even for local use.
 
 ### Syncing the intake contract
 
@@ -52,22 +59,16 @@ just sync-contract     # vendor schema + example from ../rundrafter, regen schem
 just check-contract    # check for drift against upstream, without writing
 ```
 
-Locally this reads from a sibling `../rundrafter` checkout. The pinned
-upstream revision is recorded in [`schema/SOURCE.md`](schema/SOURCE.md).
-There's no automated CI drift check yet — `rundrafter` is private, so an
-unauthenticated fetch in CI would 404 (tracked in
-[#29](https://github.com/rundrafter/rundrafter.github.io/issues/29)). Run
-`just check-contract` by hand before relying on the vendored copy being
-current.
+See [`docs/contract-sync.md`](docs/contract-sync.md) for the sync mechanics,
+the pinned-revision/`rules_revision` bookkeeping, and the cross-field parity
+workflow.
 
 ## Status
 
-Live at <https://rundrafter.github.io/>: the form collects the full intake,
-validates client-side against the vendored schema, and hands off via
-download + prefilled email, with branch protection on `main`. See
-[`docs/architecture.md`](docs/architecture.md) for how it's built and
-[`docs/decisions/`](docs/decisions/) for the design rationale.
+The form collects the full intake, validates client-side against the
+vendored schema, and hands off via download + prefilled email, with branch
+protection on `main`.
 
-Privacy note: intakes carry fitness details and arrive by ordinary email (see
-[ADR 003](docs/decisions/003-uniform-mailto-handoff.md)) — delete each
-`intake.json` from the inbox once it's been fed into the pipeline.
+Privacy note: intakes carry fitness details and arrive by ordinary email -
+delete each `intake.json` from the inbox once it's been fed into the
+pipeline.

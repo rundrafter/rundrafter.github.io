@@ -1,6 +1,6 @@
-// Single configured return address (ADR 003) - the mailto: recipient and the
-// on-screen plain-text fallback both read from here, so changing it is a
-// one-place edit.
+// Single configured return address (rundrafter's ADR 027) - the mailto:
+// recipient and the on-screen plain-text fallback both read from here, so
+// changing it is a one-place edit.
 export const RETURN_EMAIL = "eric.parkin@protonmail.com";
 
 export function downloadIntake(intake, filename = "intake.json") {

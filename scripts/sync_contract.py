@@ -21,8 +21,8 @@ CONTRACT_FILES = ("intake-schema.json", "intake-example.json")
 
 # Not vendored (they're a private repo's internals, reflected here only as
 # client-side JS in assets/assemble.js) - just hash-pinned, so a rule change
-# upstream shows up as drift instead of silently diverging. See
-# docs/architecture.md's "Rules the schema can't express".
+# upstream shows up as drift instead of silently diverging. See upstream's
+# docs/webform-architecture.md's "Rules the schema can't express".
 RULES_FILES = ("src/rundrafter/validate.py", "docs/spec/contracts.md")
 
 SOURCE_MD_TEMPLATE = """# Contract source
@@ -48,9 +48,10 @@ checkout.
 
 rules_revision: {rules_revision}
 
-After syncing assemble.js (and docs/architecture.md) to a rule change
-upstream, run `uv run python scripts/sync_contract.py --update-rules-revision`
-(sibling checkout required) to record the new pin.
+After syncing assemble.js (and, if the rule text needs updating, upstream's
+docs/webform-architecture.md) to a rule change upstream, run
+`uv run python scripts/sync_contract.py --update-rules-revision` (sibling
+checkout required) to record the new pin.
 """
 
 
@@ -223,8 +224,8 @@ def _check_rules_drift() -> str | None:
         return None
     return (
         f"rules changed upstream since last parity sync ({pinned} -> {current}): "
-        "diff validate.py/contracts.md against assets/assemble.js + "
-        "docs/architecture.md, run tests/test_stage1_parity.py, then "
+        "diff validate.py/contracts.md against assets/assemble.js, run "
+        "tests/test_stage1_parity.py, then "
         "`uv run python scripts/sync_contract.py --update-rules-revision`"
     )
 

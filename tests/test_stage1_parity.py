@@ -2,7 +2,8 @@
 
 Guards against rundrafter's `validate.py` cross-field rules drifting
 silently out of sync with their client-side re-implementation in
-assemble.js (see docs/architecture.md's "Rules the schema can't express").
+assemble.js (see rundrafter's docs/webform-architecture.md's "Rules the
+schema can't express").
 Every intake this suite considers valid is piped through the real
 `rundrafter validate` CLI (sibling checkout) and must come back clean.
 

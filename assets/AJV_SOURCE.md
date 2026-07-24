@@ -2,10 +2,10 @@
 
 `ajv.bundle.js` is the standalone UMD browser build of Ajv (the `ajv-dist`
 package), fetched by URL and committed by hand — no npm/node involved in
-producing it (see ADR 001). Uses the `ajv2020` build specifically, because
-the vendored intake schema declares `$schema: .../2020-12/schema`; the plain
-`ajv7` build only understands draft-07 and rejects it with "no schema with
-key or ref" at compile time.
+producing it (see rundrafter's ADR 025). Uses the `ajv2020` build
+specifically, because the vendored intake schema declares
+`$schema: .../2020-12/schema`; the plain `ajv7` build only understands
+draft-07 and rejects it with "no schema with key or ref" at compile time.
 
 - Source: `https://cdnjs.cloudflare.com/ajax/libs/ajv/8.17.1/ajv2020.min.js`
 - Pinned version: 8.17.1

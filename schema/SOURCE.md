@@ -21,6 +21,7 @@ checkout.
 
 rules_revision: 3229881a39b9e615d9ecaf25726f9b635de7cbd8
 
-After syncing assemble.js (and docs/architecture.md) to a rule change
-upstream, run `uv run python scripts/sync_contract.py --update-rules-revision`
-(sibling checkout required) to record the new pin.
+After syncing assemble.js (and, if the rule text needs updating, upstream's
+docs/webform-architecture.md) to a rule change upstream, run
+`uv run python scripts/sync_contract.py --update-rules-revision` (sibling
+checkout required) to record the new pin.
