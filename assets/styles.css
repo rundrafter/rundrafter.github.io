@@ -136,6 +136,13 @@ th[scope="row"] {
   font-weight: 400;
 }
 
+/* The rules below set `display` on elements the page also hides via the
+   `hidden` attribute (the skip-tailoring tickbox), and any of them would
+   otherwise beat the user-agent's `[hidden] { display: none }`. */
+[hidden] {
+  display: none !important;
+}
+
 /* Fields: label stacked above control, generous tap targets for mobile. */
 label {
   display: block;

@@ -222,7 +222,20 @@ export default {
                 ]
               },
               "type": {
-                "$ref": "#/$defs/broad_session_type"
+                "description": "One broad type, or two or more distinct types meaning any of these - whichever fits the week best.",
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/broad_session_type"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/broad_session_type"
+                    },
+                    "minItems": 2,
+                    "uniqueItems": true
+                  }
+                ]
               },
               "description": {
                 "type": "string"

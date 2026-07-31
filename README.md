@@ -22,9 +22,9 @@ contract**:
 
 - [`docs/intake.md`](https://github.com/rundrafter/rundrafter/blob/main/docs/intake.md) -
   field-by-field reference for the form.
-- [`docs/intake-schema.json`](https://github.com/rundrafter/rundrafter/blob/main/docs/intake-schema.json) -
+- [`src/rundrafter/validate/intake-schema.json`](https://github.com/rundrafter/rundrafter/blob/main/src/rundrafter/validate/intake-schema.json) -
   the authoritative schema the output must validate against.
-- [`docs/intake-example.json`](https://github.com/rundrafter/rundrafter/blob/main/docs/intake-example.json) -
+- [`src/rundrafter/validate/intake-example.json`](https://github.com/rundrafter/rundrafter/blob/main/src/rundrafter/validate/intake-example.json) -
   a golden fixture example.
 
 Keep this form in sync with those documents rather than duplicating the

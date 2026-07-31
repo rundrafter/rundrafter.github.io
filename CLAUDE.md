@@ -17,11 +17,11 @@ mechanics.
 ## Cross-field validation parity
 
 `assets/assemble.js`'s cross-field rules mirror upstream `rundrafter`'s
-`src/rundrafter/validate.py` stage-1 checks (see that repo's
+`src/rundrafter/validate/validate.py` stage-1 checks (see that repo's
 `docs/webform-architecture.md`'s "Rules the schema can't express" — this
 drifted silently once already). Before changing that validation, or after
 any contract sync (`just sync-contract`), diff `assemble.js` against the
-sibling checkout's `validate.py` + `docs/spec/contracts.md`, run
+sibling checkout's `validate/validate.py` + `docs/spec/contracts.md`, run
 `tests/test_stage1_parity.py`, and if the rules changed, re-pin with
 `uv run python scripts/sync_contract.py --update-rules-revision` (see
 `docs/contract-sync.md`).

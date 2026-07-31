@@ -103,6 +103,34 @@ function setupRepeatingGroup(
   updateAddButton();
 }
 
+// Shows a repeating row's skip-tailoring tickbox only while every type the
+// row offers is one whose detail a coach can own - the types listed in
+// `data-skip-tailoring-for`, mirroring validate.py's SKIP_TAILORABLE_TYPES
+// and its FLEXIBLE_SKIP_TAILORING_UNSUPPORTED rule for multi-type days. The
+// tick is cleared whenever it hides, so a stale one can't reach the
+// assembled intake.
+function setupSkipTailoring(row) {
+  const label = row.querySelector("[data-skip-tailoring-for]");
+  if (!label) return;
+
+  const allowed = new Set(label.dataset.skipTailoringFor.split(/\s+/));
+  const checkbox = label.querySelector('input[type="checkbox"]');
+  const typeBoxes = Array.from(
+    row.querySelectorAll('input[type="checkbox"][name$=".type"]'),
+  );
+
+  function update() {
+    const selected = typeBoxes.filter((box) => box.checked);
+    const supported =
+      selected.length > 0 && selected.every((box) => allowed.has(box.value));
+    label.hidden = !supported;
+    if (!supported) checkbox.checked = false;
+  }
+
+  typeBoxes.forEach((box) => box.addEventListener("change", update));
+  update();
+}
+
 function setupUnitLabels(form) {
   function update() {
     const checked = form.querySelector('input[name="units"]:checked');
@@ -266,7 +294,12 @@ if (form) {
     "weekly-session-list",
     "weekly-session-template",
     "add-weekly-session",
-    { onRowAdded: () => updateUnitLabels() },
+    {
+      onRowAdded: (row) => {
+        updateUnitLabels();
+        setupSkipTailoring(row);
+      },
+    },
   );
   setupRepeatingGroup("b-races-list", "b-race-template", "add-b-race", {
     maxRows: 3,

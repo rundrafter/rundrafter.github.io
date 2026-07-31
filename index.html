@@ -277,6 +277,13 @@
                 a weekly parkrun. Add a <strong>Long run</strong> entry to pin
                 your long-run day - at most one is allowed; leave it out and
                 RunDrafter picks the day for you. Tick
+                <strong>several types</strong> on one day if you don't want to
+                commit to just one - RunDrafter then picks whichever suits
+                each week, going hard on that day only in weeks with room for
+                it and jogging easy otherwise. A day offering several types
+                can't include the long run (that pin is fixed for the whole
+                plan), and can't mix running types (easy, quality, recovery)
+                with non-running ones (strength, cross-training). Tick
                 <strong>skip tailoring</strong> on a day you (or a coach) will
                 write the specifics for yourself; RunDrafter still fits it
                 into the volume curve and taper, it just won't prescribe
@@ -303,18 +310,61 @@
                   <option value="Sunday">Sunday</option>
                 </select>
               </label>
-              <label>
-                Type
-                <select name="weekly_schedule.preferred_sessions.__INDEX__.type" required>
-                  <option value=""></option>
-                  <option value="easy">Easy</option>
-                  <option value="quality">Quality (hard session)</option>
-                  <option value="recovery">Recovery</option>
-                  <option value="long">Long run</option>
-                  <option value="strength">Strength</option>
-                  <option value="cross_training">Cross-training</option>
-                </select>
-              </label>
+              <fieldset data-type-group>
+                <legend>Type</legend>
+                <p class="help-text">
+                  Tick one to pin the day to that type, or several to say
+                  "any of these - whichever fits the week".
+                </p>
+                <label>
+                  <input
+                    type="checkbox"
+                    name="weekly_schedule.preferred_sessions.__INDEX__.type"
+                    value="easy"
+                  />
+                  Easy
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    name="weekly_schedule.preferred_sessions.__INDEX__.type"
+                    value="quality"
+                  />
+                  Quality (hard session)
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    name="weekly_schedule.preferred_sessions.__INDEX__.type"
+                    value="recovery"
+                  />
+                  Recovery
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    name="weekly_schedule.preferred_sessions.__INDEX__.type"
+                    value="long"
+                  />
+                  Long run
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    name="weekly_schedule.preferred_sessions.__INDEX__.type"
+                    value="strength"
+                  />
+                  Strength
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    name="weekly_schedule.preferred_sessions.__INDEX__.type"
+                    value="cross_training"
+                  />
+                  Cross-training
+                </label>
+              </fieldset>
               <label>
                 Description (optional)
                 <input

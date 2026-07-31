@@ -133,7 +133,18 @@
                   "Friday", "Saturday", "Sunday"
                 ]
               },
-              "type": { "$ref": "#/$defs/broad_session_type" },
+              "type": {
+                "description": "One broad type, or two or more distinct types meaning any of these - whichever fits the week best.",
+                "oneOf": [
+                  { "$ref": "#/$defs/broad_session_type" },
+                  {
+                    "type": "array",
+                    "items": { "$ref": "#/$defs/broad_session_type" },
+                    "minItems": 2,
+                    "uniqueItems": true
+                  }
+                ]
+              },
               "description": { "type": "string" },
               "distance_min": { "type": "number", "minimum": 0 },
               "distance_max": { "type": "number", "minimum": 0 },

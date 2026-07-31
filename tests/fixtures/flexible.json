@@ -1,0 +1,34 @@
+{
+  "units": "km",
+  "runner": { "name": "Test Runner", "experience": "experienced" },
+  "goal": {
+    "race": "Melbourne Marathon",
+    "distance": "marathon",
+    "date": "2026-10-11",
+    "target_time": "3:45:00",
+    "start_date": "2026-06-01"
+  },
+  "recent_result": {
+    "distance": "half",
+    "time": "1:45:00",
+    "date": "2026-05-01"
+  },
+  "current_fitness": { "weekly_distance": 40, "longest_run": 18 },
+  "weekly_schedule": {
+    "preferred_sessions": [
+      { "day": "Sunday", "type": ["long"] },
+      {
+        "day": "Wednesday",
+        "type": ["easy", "quality"],
+        "description": "Club night - session or a jog, depending on the week"
+      },
+      {
+        "day": "Friday",
+        "type": ["strength", "cross_training"],
+        "description": "Gym or the pool",
+        "distance_max": 0,
+        "skip_tailoring": true
+      }
+    ]
+  }
+}
