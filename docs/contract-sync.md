@@ -47,8 +47,8 @@ diffing content.
 
 Before changing any cross-field rule, or after any contract sync, diff
 `assemble.js` against the sibling `rundrafter` checkout's
-`validate/validate.py` + `docs/spec/contracts.md`, run `tests/test_stage1_parity.py`, and if the
-rules changed, re-pin with:
+`validate/validate.py` + `docs/spec/contracts.md`, run
+`tests/test_stage1_parity.py`, and if the rules changed, re-pin with:
 
 ```sh
 uv run python scripts/sync_contract.py --update-rules-revision
