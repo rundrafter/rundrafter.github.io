@@ -215,6 +215,108 @@ def test_multiple_long_entries_blocks(page: Page) -> None:
     )
 
 
+def test_flexible_type_assembles_as_array(page: Page) -> None:
+    """A day offering several types keeps the array form through assembly and
+    validates against the vendored schema."""
+    state = valid_state()
+    state["weekly_schedule"]["preferred_sessions"] = [
+        {"day": "Wednesday", "type": ["easy", "quality"], "description": "club night"}
+    ]
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert_schema_valid(result["intake"])
+    session = result["intake"]["weekly_schedule"]["preferred_sessions"][0]
+    assert session["type"] == ["easy", "quality"]
+
+
+def test_single_ticked_type_collapses_to_string(page: Page) -> None:
+    """The type checkboxes always yield an array, but one ticked type is the
+    pinned case - it collapses to a bare string, the only spelling the schema
+    accepts for it (`minItems: 2` on the array form)."""
+    state = valid_state()
+    state["weekly_schedule"]["preferred_sessions"] = [
+        {"day": "Wednesday", "type": ["quality"]}
+    ]
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert_schema_valid(result["intake"])
+    session = result["intake"]["weekly_schedule"]["preferred_sessions"][0]
+    assert session["type"] == "quality"
+
+
+def test_no_ticked_type_omits_the_field(page: Page) -> None:
+    """No type ticked emits no `type` at all rather than an empty array, so
+    the schema's `required` reports it as a missing field."""
+    state = valid_state()
+    state["weekly_schedule"]["preferred_sessions"] = [{"day": "Wednesday", "type": []}]
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    session = result["intake"]["weekly_schedule"]["preferred_sessions"][0]
+    assert "type" not in session
+
+
+def test_flexible_type_including_long_blocks(page: Page) -> None:
+    """A day offering the long run among several types blocks handoff - the
+    long-run pin is resolved once per plan (FLEXIBLE_TYPE_INCLUDES_LONG)."""
+    state = valid_state()
+    state["weekly_schedule"]["preferred_sessions"] = [
+        {"day": "Saturday", "type": ["long", "easy"]}
+    ]
+    result = run_assemble(page, state)
+    assert any("long run" in e.lower() and "Saturday" in e for e in result["errors"])
+
+
+def test_flexible_type_mixing_modes_blocks(page: Page) -> None:
+    """A day mixing running and non-running types blocks handoff - rest-day
+    placement needs a definite answer (FLEXIBLE_TYPE_MIXES_MODES)."""
+    state = valid_state()
+    state["weekly_schedule"]["preferred_sessions"] = [
+        {"day": "Wednesday", "type": ["easy", "strength"]}
+    ]
+    result = run_assemble(page, state)
+    assert any("non-running" in e and "Wednesday" in e for e in result["errors"])
+
+
+def test_flexible_all_non_running_type_passes(page: Page) -> None:
+    """A day offering only non-running types is a well-formed flexible set."""
+    state = valid_state()
+    state["weekly_schedule"]["preferred_sessions"] = [
+        {"day": "Wednesday", "type": ["strength", "cross_training"]}
+    ]
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert_schema_valid(result["intake"])
+
+
+def test_flexible_type_skipping_tailoring_blocks(page: Page) -> None:
+    """Skipping tailoring on a set with a non-skip-tailorable type blocks
+    handoff (FLEXIBLE_SKIP_TAILORING_UNSUPPORTED)."""
+    state = valid_state()
+    state["weekly_schedule"]["preferred_sessions"] = [
+        {"day": "Wednesday", "type": ["easy", "quality"], "skip_tailoring": True}
+    ]
+    result = run_assemble(page, state)
+    assert any("skips tailoring" in e and "Wednesday" in e for e in result["errors"])
+
+
+def test_uniformly_skip_tailorable_flexible_type_passes(page: Page) -> None:
+    """Skipping tailoring is allowed when every offered type is one whose
+    detail a coach can own."""
+    state = valid_state()
+    state["weekly_schedule"]["preferred_sessions"] = [
+        {
+            "day": "Wednesday",
+            "type": ["strength", "cross_training"],
+            "skip_tailoring": True,
+        }
+    ]
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert_schema_valid(result["intake"])
+    session = result["intake"]["weekly_schedule"]["preferred_sessions"][0]
+    assert session["tailored"] is False
+
+
 def test_preferred_session_on_unavailable_day_blocks(page: Page) -> None:
     """A weekly session on a fully-unticked day blocks handoff."""
     state = valid_state()
@@ -390,6 +492,25 @@ def test_beginner_fixture_assembles_and_validates(page: Page) -> None:
     assert result["intake"]["goal"]["target_time"] == "suggest"
 
 
+def test_flexible_fixture_assembles_and_validates(page: Page) -> None:
+    """A flexible form-state (a running day offering easy-or-quality, a
+    non-running day offering strength-or-cross-training, and a single-ticked
+    long run) assembles cleanly, validates, and keeps one spelling per
+    meaning: array only where the runner offered a real choice."""
+    result = run_assemble(page, load_fixture("flexible.json"))
+    assert result["errors"] == []
+    assert_schema_valid(result["intake"])
+    types = {
+        session["day"]: session["type"]
+        for session in result["intake"]["weekly_schedule"]["preferred_sessions"]
+    }
+    assert types == {
+        "Sunday": "long",
+        "Wednesday": ["easy", "quality"],
+        "Friday": ["strength", "cross_training"],
+    }
+
+
 def test_blank_current_fitness_omits_section(page: Page) -> None:
     """A runner with no honest weekly-distance/longest-run figure to give may
     leave the whole Current Fitness group blank; the assembled intake omits
@@ -471,6 +592,68 @@ def test_dom_smoke_blank_current_fitness_omits_section(page: Page) -> None:
     downloaded = json.loads(Path(download_info.value.path()).read_text())
     assert "current_fitness" not in downloaded
     assert_schema_valid(downloaded)
+
+
+def fill_required_fields(page: Page) -> None:
+    """Fill every field the form needs to reach a download, nothing more."""
+    page.fill("#runner-name", "Alex Smith")
+    page.select_option("#runner-experience", "experienced")
+
+    page.fill("#goal-race", "Melbourne Marathon")
+    page.select_option("#goal-distance", "marathon")
+    page.fill("#goal-date", "2026-10-11")
+    page.fill("#goal-target-time", "3:45:00")
+    page.fill("#goal-start-date", "2026-06-01")
+
+    page.select_option("#recent-result-distance", "half")
+    page.fill("#recent-result-time", "1:45:00")
+    page.fill("#recent-result-date", "2026-05-01")
+
+    page.fill("#fitness-weekly-distance", "40")
+    page.fill("#fitness-longest-run", "18")
+
+
+def test_dom_smoke_flexible_types_download_as_array(page: Page) -> None:
+    """Ticking several types on one weekly-session row downloads an intake
+    whose `type` is the array of exactly those types."""
+    fill_required_fields(page)
+
+    page.click("#add-weekly-session")
+    page.select_option('[name="weekly_schedule.preferred_sessions.0.day"]', "Wednesday")
+    page.check('[name="weekly_schedule.preferred_sessions.0.type"][value="easy"]')
+    page.check('[name="weekly_schedule.preferred_sessions.0.type"][value="quality"]')
+
+    with page.expect_download() as download_info:
+        page.click('button[type="submit"]')
+
+    downloaded = json.loads(Path(download_info.value.path()).read_text())
+    session = downloaded["weekly_schedule"]["preferred_sessions"][0]
+    assert session["type"] == ["easy", "quality"]
+    assert_schema_valid(downloaded)
+
+
+def test_dom_skip_tailoring_hidden_unless_every_type_supports_it(page: Page) -> None:
+    """The skip-tailoring tickbox appears only while every ticked type is one
+    whose detail a coach can own, and clears itself when it hides."""
+    page.click("#add-weekly-session")
+    label = page.locator("[data-skip-tailoring-for]")
+    checkbox = page.locator(
+        '[name="weekly_schedule.preferred_sessions.0.skip_tailoring"]'
+    )
+    type_box = '[name="weekly_schedule.preferred_sessions.0.type"]'
+
+    assert label.is_hidden()
+
+    page.check(f'{type_box}[value="strength"]')
+    assert label.is_visible()
+
+    page.check(f'{type_box}[value="cross_training"]')
+    assert label.is_visible()
+
+    checkbox.check()
+    page.check(f'{type_box}[value="easy"]')
+    assert label.is_hidden()
+    assert checkbox.is_checked() is False
 
 
 def test_empty_required_field_shows_inline_error(page: Page) -> None:

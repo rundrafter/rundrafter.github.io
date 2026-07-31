@@ -15,8 +15,9 @@ just check-contract    # check for drift against upstream, without writing
 ```
 
 1. Copy `intake-schema.json` and `intake-example.json` from the upstream
-   source - locally from the sibling checkout (`../rundrafter/docs/`), or
-   in CI from GitHub raw at the pinned revision in `schema/SOURCE.md`.
+   source - locally from the sibling checkout
+   (`../rundrafter/src/rundrafter/validate/`), or in CI from GitHub raw at
+   the pinned revision in `schema/SOURCE.md`.
 2. Regenerate `assets/schema.js` by wrapping the JSON as
    `export default <json>;`. Inlining as a module means the page needs no
    `fetch`, so validation works from `file://` too.
@@ -33,20 +34,20 @@ current.
 
 `assets/assemble.js`'s cross-field rules (date ordering, event windows,
 schedule checks - see `rundrafter`'s `docs/webform-architecture.md` for the
-full list) mirror upstream `rundrafter`'s `src/rundrafter/validate.py`
-stage-1 checks rule-for-rule, so an intake this form accepts never bounces
-back from the pipeline.
+full list) mirror upstream `rundrafter`'s
+`src/rundrafter/validate/validate.py` stage-1 checks rule-for-rule, so an
+intake this form accepts never bounces back from the pipeline.
 
 `schema/SOURCE.md` pins a separate `rules_revision`: the upstream hash of
-`validate.py` + `docs/spec/contracts.md` at the last cross-field parity
-review. These aren't vendored files, so `just check-contract` only compares
+`validate/validate.py` + `docs/spec/contracts.md` at the last cross-field
+parity review. These aren't vendored files, so `just check-contract` only compares
 hashes - against the sibling checkout, locally; it's a no-op without one -
 and reports "rules changed upstream since last parity sync" rather than
 diffing content.
 
 Before changing any cross-field rule, or after any contract sync, diff
-`assemble.js` against the sibling `rundrafter` checkout's `validate.py` +
-`docs/spec/contracts.md`, run `tests/test_stage1_parity.py`, and if the
+`assemble.js` against the sibling `rundrafter` checkout's
+`validate/validate.py` + `docs/spec/contracts.md`, run `tests/test_stage1_parity.py`, and if the
 rules changed, re-pin with:
 
 ```sh

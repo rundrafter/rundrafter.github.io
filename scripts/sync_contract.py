@@ -17,17 +17,21 @@ SOURCE_MD = SCHEMA_DIR / "SOURCE.md"
 UPSTREAM_SIBLING = REPO_ROOT.parent / "rundrafter"
 UPSTREAM_RAW_BASE = "https://raw.githubusercontent.com/rundrafter/rundrafter"
 
+# Upstream colocates each stage's schema and fixtures with its module
+# (upstream ADR 033), so the contract lives under the validate subpackage.
+UPSTREAM_CONTRACT_DIR = "src/rundrafter/validate"
 CONTRACT_FILES = ("intake-schema.json", "intake-example.json")
 
 # Not vendored (they're a private repo's internals, reflected here only as
 # client-side JS in assets/assemble.js) - just hash-pinned, so a rule change
 # upstream shows up as drift instead of silently diverging. See upstream's
 # docs/webform-architecture.md's "Rules the schema can't express".
-RULES_FILES = ("src/rundrafter/validate.py", "docs/spec/contracts.md")
+RULES_FILES = (f"{UPSTREAM_CONTRACT_DIR}/validate.py", "docs/spec/contracts.md")
 
 SOURCE_MD_TEMPLATE = """# Contract source
 
-Vendored from the upstream `rundrafter` repo's intake contract:
+Vendored from the upstream `rundrafter` repo's intake contract
+(`src/rundrafter/validate/`):
 
 - `intake-schema.json`
 - `intake-example.json`
@@ -41,7 +45,7 @@ Re-sync with `just sync-contract` (`uv run python scripts/sync_contract.py`).
 ## Cross-field rule parity
 
 The cross-field rules in `assets/assemble.js` mirror upstream
-`src/rundrafter/validate.py` (constraints documented in
+`src/rundrafter/validate/validate.py` (constraints documented in
 `docs/spec/contracts.md`). These aren't vendored - only their upstream
 revision is pinned, checked by `just check-contract` against the sibling
 checkout.
@@ -132,11 +136,18 @@ def _fetch_contract(dest_dir: Path) -> str:
 
 
 def _sync_from_sibling(dest_dir: Path) -> str:
-    docs_dir = UPSTREAM_SIBLING / "docs"
+    contract_dir = UPSTREAM_SIBLING / UPSTREAM_CONTRACT_DIR
     for name in CONTRACT_FILES:
-        shutil.copy(docs_dir / name, dest_dir / name)
+        shutil.copy(contract_dir / name, dest_dir / name)
     result = subprocess.run(
-        ["git", "log", "-1", "--format=%H", "--", *(f"docs/{n}" for n in CONTRACT_FILES)],
+        [
+            "git",
+            "log",
+            "-1",
+            "--format=%H",
+            "--",
+            *(f"{UPSTREAM_CONTRACT_DIR}/{n}" for n in CONTRACT_FILES),
+        ],
         cwd=UPSTREAM_SIBLING,
         capture_output=True,
         text=True,
@@ -148,7 +159,7 @@ def _sync_from_sibling(dest_dir: Path) -> str:
 def _sync_from_github(dest_dir: Path) -> str:
     revision = _read_pinned(SCHEMA_DIR, "revision")
     for name in CONTRACT_FILES:
-        url = f"{UPSTREAM_RAW_BASE}/{revision}/docs/{name}"
+        url = f"{UPSTREAM_RAW_BASE}/{revision}/{UPSTREAM_CONTRACT_DIR}/{name}"
         with urllib.request.urlopen(url) as response:  # noqa: S310
             (dest_dir / name).write_bytes(response.read())
     return revision

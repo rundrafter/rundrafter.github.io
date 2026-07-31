@@ -104,6 +104,14 @@ def test_beginner_fixture_passes_stage1(tmp_path: Path, page: Page) -> None:
     assert_passes_stage1(tmp_path, result["intake"], "beginner")
 
 
+def test_flexible_fixture_passes_stage1(tmp_path: Path, page: Page) -> None:
+    """The flexible fixture (days offering several broad types) clears the
+    real stage-1 validator, including its three flexible-set rules."""
+    result = run_assemble(page, load_fixture("flexible.json"))
+    assert result["errors"] == []
+    assert_passes_stage1(tmp_path, result["intake"], "flexible")
+
+
 def test_dom_smoke_download_passes_stage1(tmp_path: Path, page: Page) -> None:
     """A real form fill-and-download clears the real stage-1 validator."""
     page.fill("#runner-name", "Alex Smith")

@@ -8,6 +8,24 @@ const DAY_NAMES = [
   "Sunday",
 ];
 
+// Mirrors expand/schedule.py's NON_RUNNING_TYPES and SKIP_TAILORABLE_TYPES,
+// which the flexible-type rules below are stated in terms of.
+const NON_RUNNING_TYPES = new Set(["strength", "cross_training"]);
+const SKIP_TAILORABLE_TYPES = new Set([
+  "quality",
+  "strength",
+  "long",
+  "cross_training",
+]);
+
+// Every broad type an entry offers, whichever form `type` takes - mirrors
+// expand/schedule.py's preferred_types. No rule below reads `type` directly.
+function preferredTypes(session) {
+  const type = session?.type;
+  if (Array.isArray(type)) return type;
+  return type ? [type] : [];
+}
+
 // A day whose grid has both halves unticked is never a running day (mirrors
 // resolve.py's _both_halves_unticked); an absent day or half defaults to
 // available, matching the schema default.
@@ -27,11 +45,18 @@ function omitEmpty(obj) {
 }
 
 // Maps one weekly-session-template row from its form shape (a
-// `skip_tailoring` tickbox) to the contract shape (ADR 014): `tailored` is
-// omitted when true (the schema default) and only emitted as `false` when
-// the tickbox was checked.
+// `skip_tailoring` tickbox, and a `type` checkbox group that always yields an
+// array) to the contract shape (ADR 014): `tailored` is omitted when true
+// (the schema default) and only emitted as `false` when the tickbox was
+// checked, and a single ticked type collapses to a bare string - the schema
+// reserves the array form for a genuine choice (`minItems: 2`), so one
+// selection has exactly one spelling. An empty array falls to `omitEmpty`,
+// leaving the schema's `required` to report the missing type.
 function mapPreferredSession(session) {
   const { skip_tailoring, ...rest } = session ?? {};
+  if (Array.isArray(rest.type) && rest.type.length === 1) {
+    rest.type = rest.type[0];
+  }
   return omitEmpty({ ...rest, ...(skip_tailoring ? { tailored: false } : {}) });
 }
 
@@ -216,8 +241,8 @@ function validateCrossField(formState) {
   // long-run day, so at most one is allowed, and the same unavailable-day
   // check that used to apply to the removed field now applies to that entry
   // (mirrors validate.py's _validate_schedule).
-  const longEntries = (schedule.preferred_sessions ?? []).filter(
-    (session) => session?.type === "long",
+  const longEntries = (schedule.preferred_sessions ?? []).filter((session) =>
+    preferredTypes(session).includes("long"),
   );
   if (longEntries.length > 1) {
     errors.push(
@@ -248,11 +273,51 @@ function validateCrossField(formState) {
     );
   }
 
+  errors.push(...validateFlexibleTypes(schedule.preferred_sessions));
   errors.push(
     ...validateSessionRanges(schedule.preferred_sessions, "Weekly session"),
   );
   errors.push(...validateSessionRanges(formState.other_events, "Other event"));
 
+  return errors;
+}
+
+// Mirrors validate.py's _validate_flexible_types (FLEXIBLE_TYPE_INCLUDES_LONG,
+// FLEXIBLE_TYPE_MIXES_MODES, FLEXIBLE_SKIP_TAILORING_UNSUPPORTED). A day
+// offering several types leaves the pick to the per-week selection, but the
+// pipeline still settles that day's *structural* role once for the whole plan
+// - whether it pins the long run, whether it's a running day, and whether a
+// coach owns its detail - so a set that leaves one of those unanswerable is
+// rejected here. Single-type rows are untouched.
+function validateFlexibleTypes(sessions) {
+  const errors = [];
+  for (const session of sessions ?? []) {
+    const types = preferredTypes(session);
+    if (types.length < 2) continue;
+    const rowLabel = session.day || session.description || "Weekly session";
+    const offered = types.join(", ");
+
+    if (types.includes("long")) {
+      errors.push(
+        `Weekly session "${rowLabel}" offers several types (${offered}), one of them the long run. The long run pins your long-run day for the whole plan, so it can't be one option among several - give it a day of its own.`,
+      );
+    }
+
+    const nonRunning = types.filter((type) => NON_RUNNING_TYPES.has(type));
+    if (nonRunning.length > 0 && nonRunning.length < types.length) {
+      errors.push(
+        `Weekly session "${rowLabel}" mixes running and non-running types (${offered}). Rest days are placed once for the whole plan and need a definite answer to whether the day is a running day, so a day offering several types must be either all running or all non-running.`,
+      );
+    }
+
+    const skippingTailoring =
+      session.skip_tailoring === true || session.tailored === false;
+    if (skippingTailoring && !types.every((t) => SKIP_TAILORABLE_TYPES.has(t))) {
+      errors.push(
+        `Weekly session "${rowLabel}" skips tailoring but offers a type with no detail to hand over (${offered}). Skipping tailoring promises a coach owns that day's detail, so every type the day offers must be one of: ${[...SKIP_TAILORABLE_TYPES].sort().join(", ")}.`,
+      );
+    }
+  }
   return errors;
 }
 
