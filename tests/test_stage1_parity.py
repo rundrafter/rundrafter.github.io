@@ -120,11 +120,15 @@ def test_dom_smoke_download_passes_stage1(tmp_path: Path, page: Page) -> None:
     page.fill("#goal-race", "Melbourne Marathon")
     page.select_option("#goal-distance", "marathon")
     page.fill("#goal-date", "2026-10-11")
-    page.fill("#goal-target-time", "3:45:00")
+    page.fill("#goal-target-time-h", "3")
+    page.fill("#goal-target-time-m", "45")
+    page.fill("#goal-target-time-s", "0")
     page.fill("#goal-start-date", "2026-06-01")
 
     page.select_option("#recent-result-distance", "half")
-    page.fill("#recent-result-time", "1:45:00")
+    page.fill("#recent-result-time-h", "1")
+    page.fill("#recent-result-time-m", "45")
+    page.fill("#recent-result-time-s", "0")
     page.fill("#recent-result-date", "2026-05-01")
 
     page.fill("#fitness-weekly-distance", "40")

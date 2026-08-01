@@ -1,3 +1,5 @@
+import { computeVdotFromResult } from "./vdot.js";
+
 const DAY_NAMES = [
   "Monday",
   "Tuesday",
@@ -7,6 +9,8 @@ const DAY_NAMES = [
   "Saturday",
   "Sunday",
 ];
+
+const HALVES = ["morning", "evening"];
 
 // Mirrors expand/schedule.py's NON_RUNNING_TYPES and SKIP_TAILORABLE_TYPES,
 // which the flexible-type rules below are stated in terms of.
@@ -44,19 +48,69 @@ function omitEmpty(obj) {
   return result;
 }
 
-// Maps one weekly-session-template row from its form shape (a
-// `skip_tailoring` tickbox, and a `type` checkbox group that always yields an
-// array) to the contract shape (ADR 014): `tailored` is omitted when true
-// (the schema default) and only emitted as `false` when the tickbox was
-// checked, and a single ticked type collapses to a bare string - the schema
-// reserves the array form for a genuine choice (`minItems: 2`), so one
-// selection has exactly one spelling. An empty array falls to `omitEmpty`,
-// leaving the schema's `required` to report the missing type.
-function mapPreferredSession(session) {
-  const { skip_tailoring, ...rest } = session ?? {};
-  if (Array.isArray(rest.type) && rest.type.length === 1) {
-    rest.type = rest.type[0];
+// Converts a structured hours/minutes/seconds entry into the H:MM:SS/M:SS
+// string the schema's time patterns accept, or undefined when every field
+// is blank. Minutes/seconds are zero-padded only when hours are present -
+// H:MM:SS requires exactly two digits there, but bare M:SS does not.
+function composeStructuredTime({ h, m, s } = {}) {
+  if (h === undefined && m === undefined && s === undefined) return undefined;
+  const pad = (n) => String(n).padStart(2, "0");
+  const minutes = m ?? 0;
+  const seconds = pad(s ?? 0);
+  return h ? `${h}:${pad(minutes)}:${seconds}` : `${minutes}:${seconds}`;
+}
+
+// Converts the tri-state availability grid into the {availability,
+// preferred_sessions} shape the rest of this module (and, upstream,
+// resolve.py) already works in terms of - see rundrafter's design.md, "The
+// availability grid absorbs the session template as a tri-state cell". A
+// cell's column supplies its session's time_of_day; that is the only place
+// the pin comes from, never a separate control that could contradict it.
+function expandGrid(grid) {
+  const availability = {};
+  const preferredSessions = [];
+  for (const day of DAY_NAMES) {
+    for (const half of HALVES) {
+      const cell = grid?.[day]?.[half];
+      const state = cell?.state ?? "available";
+      if (state === "unavailable") {
+        availability[day] = { ...availability[day], [half]: false };
+      } else if (state === "session") {
+        preferredSessions.push({
+          day,
+          time_of_day: half,
+          type: cell.type,
+          description: cell.description,
+          distance_min: cell.distance_min,
+          distance_max: cell.distance_max,
+          skip_tailoring: cell.skip_tailoring,
+        });
+      }
+    }
   }
+  return { availability, preferred_sessions: preferredSessions };
+}
+
+// A `type` checkbox group always yields an array; a single ticked type
+// collapses to a bare string, since the schema reserves the array form for
+// a genuine choice (`minItems: 2`) - one selection has exactly one
+// spelling. Shared by preferred_sessions and other_events, both of which
+// moved to a checkbox group (ADR 039 / task 9.7). An empty array is left
+// alone, falling to `omitEmpty` so the schema's `required` reports the
+// missing field.
+function collapseSingleType(entry) {
+  if (Array.isArray(entry?.type) && entry.type.length === 1) {
+    return { ...entry, type: entry.type[0] };
+  }
+  return entry;
+}
+
+// Maps one grid cell's session entry from its form shape (a
+// `skip_tailoring` tickbox, plus the type-collapsing above) to the contract
+// shape (ADR 014): `tailored` is omitted when true (the schema default) and
+// only emitted as `false` when the tickbox was checked.
+function mapPreferredSession(session) {
+  const { skip_tailoring, ...rest } = collapseSingleType(session) ?? {};
   return omitEmpty({ ...rest, ...(skip_tailoring ? { tailored: false } : {}) });
 }
 
@@ -83,13 +137,14 @@ function pruneAvailability(availability) {
   return Object.keys(sparse).length > 0 ? sparse : undefined;
 }
 
-// Prunes weekly_schedule to an override-only object: the availability grid
-// keeps only unticked half-days, preferred_sessions drops when left on
-// "let RunDrafter decide", and the whole section is omitted when nothing was
-// overridden. There is no `rest_days` override any more (ADR 017) - the
-// resolver always derives rest days. There is likewise no separate
-// `long_run_day` override (ADR 019) - a `type: "long"` preferred_sessions
-// entry is the only way to pin the long-run day.
+// Prunes an expanded weekly_schedule ({availability, preferred_sessions})
+// to an override-only object: the availability grid keeps only unticked
+// half-days, preferred_sessions drops when the grid never left "available"
+// for a session, and the whole section is omitted when nothing was
+// overridden. There is no `rest_days` override (ADR 017) - the resolver
+// always derives rest days. There is likewise no separate `long_run_day`
+// override (ADR 019) - a `type: "long"` preferred_sessions entry is the
+// only way to pin the long-run day.
 function pruneWeeklySchedule(schedule) {
   if (!schedule) return undefined;
   const { availability, ...rest } = mapPreferredSessions(omitEmpty(schedule));
@@ -99,15 +154,76 @@ function pruneWeeklySchedule(schedule) {
 }
 
 // Resolves the goal's target-time radio (form-only field, never part of the
-// contract) into the schema's three-way `target_time`: the entered specific
-// time, or the "finish"/"suggest" literal (ADR 016).
+// contract) plus its structured hours/minutes/seconds entry into the
+// schema's three-way `target_time`: the composed specific time, or the
+// "finish"/"suggest" literal (ADR 016).
 function resolveGoal(goal) {
-  const { target_time_mode, ...rest } = goal ?? {};
+  const {
+    target_time_mode,
+    target_time_h,
+    target_time_m,
+    target_time_s,
+    ...rest
+  } = goal ?? {};
+  const composed = composeStructuredTime({
+    h: target_time_h,
+    m: target_time_m,
+    s: target_time_s,
+  });
   const target_time =
     target_time_mode === "finish" || target_time_mode === "suggest"
       ? target_time_mode
-      : rest.target_time;
+      : composed;
   return omitEmpty({ ...rest, target_time });
+}
+
+// Resolves a B race's structured time entry the same way as the goal's,
+// minus the "suggest" projection - calibration projects a target only for
+// the goal, from the build-week count, and there is no defined analogue for
+// a mid-plan B race.
+function resolveBRace(race) {
+  const { target_time_mode, target_time_h, target_time_m, target_time_s, ...rest } =
+    race ?? {};
+  const composed = composeStructuredTime({
+    h: target_time_h,
+    m: target_time_m,
+    s: target_time_s,
+  });
+  const target_time = target_time_mode === "finish" ? "finish" : composed;
+  return { ...rest, target_time };
+}
+
+// Resolves recent_result's structured time entry into `time`.
+function resolveRecentResult(recentResult) {
+  if (!recentResult) return recentResult;
+  const { time_h, time_m, time_s, ...rest } = recentResult;
+  const time = composeStructuredTime({ h: time_h, m: time_m, s: time_s });
+  return { ...rest, time };
+}
+
+// Computes current_fitness.vdot from a resolved recent_result and folds it
+// in, mirroring the same Daniels formula compute_vdot uses (parity:
+// tests/test_vdot_parity.py) and submitting it as an authoritative field
+// (rundrafter's design.md, "VDOT becomes an authoritative intake field,
+// verified upstream"). Only added when current_fitness already carries the
+// schema's other required fields (weekly_distance, longest_run) - the
+// schema requires both whenever the section is present at all, so a vdot
+// with neither would never validate.
+function withVdot(currentFitness, recentResult) {
+  if (
+    !currentFitness ||
+    currentFitness.weekly_distance === undefined ||
+    currentFitness.longest_run === undefined
+  ) {
+    return currentFitness;
+  }
+  if (!recentResult?.distance || !recentResult?.time) return currentFitness;
+  try {
+    const vdot = Math.round(computeVdotFromResult(recentResult) * 100) / 100;
+    return { ...currentFitness, vdot };
+  } catch {
+    return currentFitness;
+  }
 }
 
 // Whether a value carries user-entered content, for deciding if a whole
@@ -161,7 +277,9 @@ const MIN_TRAINABLE_DAYS = 3;
 
 // Cross-field product rules the schema can't express (see rundrafter's
 // docs/webform-architecture.md). Mirrors rundrafter's stage 1
-// (validate.py / contracts.md) rule-for-rule.
+// (validate.py / contracts.md) rule-for-rule. `formState.weekly_schedule`
+// here is the already-expanded {availability, preferred_sessions} shape,
+// not the raw tri-state grid.
 // Returns human-readable messages; an empty array means the rules all pass.
 function validateCrossField(formState) {
   const errors = [];
@@ -222,25 +340,31 @@ function validateCrossField(formState) {
     }
   }
 
-  // days_available and rest_days are no longer raw-intake fields (ADR 017 -
-  // the resolver always derives them from the availability grid +
-  // runner.experience), so an unset grid is "let RunDrafter decide", not a
-  // validation failure. A preferred session landing on a resolver-derived
-  // rest day can only be caught once the resolver has run (validate.py's
+  // A preferred session landing on a resolver-derived rest day can only be
+  // caught once the resolver has run (validate.py's
   // _validate_resolved_schedule), which this form can't do; an
   // under-constrained grid is generally a resolver-side warning
   // (SCHEDULE_UNDER_CONSTRAINED) this form can't check either - except the
   // 5-or-more-unticked-days case handled as a warning below, which is
-  // guaranteed regardless of what the resolver decides. Individual
-  // never-available days (both halves unticked), though, the grid can
-  // express directly, so overrides are checked against those below.
-  const unavailableDays = getUnavailableDays(schedule);
-
+  // guaranteed regardless of what the resolver decides.
+  //
+  // Upstream's LONG_RUN_DAY_UNAVAILABLE and PREFERRED_SESSION_ON_UNAVAILABLE_DAY
+  // (a preferred session pinned to a day whose both halves are unticked) are
+  // NOT re-implemented here, unlike stage 1's other schedule checks: a
+  // session can only exist in a grid cell that is itself in the "session"
+  // state, which is by definition not "unavailable", so a day can never be
+  // fully unavailable (both halves unticked) while also carrying a
+  // preferred session on it - the tri-state grid makes the contradiction
+  // structurally unreachable, the same reason SESSION_TIME_UNAVAILABLE below
+  // is upstream-only. They stay reachable upstream only via a hand-edited
+  // intake.json, whose `availability` and `preferred_sessions` are
+  // independent top-level keys with no such coupling.
+  //
   // There is no `long_run_day` override field any more (ADR 019) - a
   // `type: "long"` entry in preferred_sessions is the only way to pin the
-  // long-run day, so at most one is allowed, and the same unavailable-day
-  // check that used to apply to the removed field now applies to that entry
-  // (mirrors validate.py's _validate_schedule).
+  // long-run day, so at most one is allowed (mirrors validate.py's
+  // MULTIPLE_LONG_RUN_ENTRIES, which - unlike the two checks above - has no
+  // dependency on availability and stays fully reachable through the grid).
   const longEntries = (schedule.preferred_sessions ?? []).filter((session) =>
     preferredTypes(session).includes("long"),
   );
@@ -248,28 +372,6 @@ function validateCrossField(formState) {
     errors.push(
       'weekly_schedule.preferred_sessions has more than one type: "long"' +
         " entry; at most one is allowed to pin the long-run day.",
-    );
-  } else if (
-    longEntries.length === 1 &&
-    unavailableDays.includes(longEntries[0].day)
-  ) {
-    errors.push(
-      `The type: "long" preferred session (${longEntries[0].day}) has both` +
-        " halves unticked in the availability grid, so the runner is never" +
-        " available to run that day.",
-    );
-  }
-
-  const preferredOnUnavailableDay = [
-    ...new Set(
-      (schedule.preferred_sessions ?? [])
-        .map((session) => session?.day)
-        .filter((day) => day && unavailableDays.includes(day)),
-    ),
-  ];
-  if (preferredOnUnavailableDay.length > 0) {
-    errors.push(
-      `Preferred session day(s) ${preferredOnUnavailableDay.join(", ")} have both halves unticked in the availability grid.`,
     );
   }
 
@@ -285,8 +387,8 @@ function validateCrossField(formState) {
 // Mirrors validate.py's _validate_flexible_types (FLEXIBLE_TYPE_INCLUDES_LONG,
 // FLEXIBLE_TYPE_MIXES_MODES, FLEXIBLE_SKIP_TAILORING_UNSUPPORTED). A day
 // offering several types leaves the pick to the per-week selection, but the
-// pipeline still settles that day's *structural* role once for the whole plan
-// - whether it pins the long run, whether it's a running day, and whether a
+// pipeline still settles that day's *structural* role once for the whole
+// plan - whether it pins the long run, whether it's a running day, and whether a
 // coach owns its detail - so a set that leaves one of those unanswerable is
 // rejected here. Single-type rows are untouched.
 function validateFlexibleTypes(sessions) {
@@ -372,21 +474,40 @@ function validateWarnings(formState) {
 
 export function assemble(formState, { now } = {}) {
   const timestamp = now ?? new Date().toISOString();
-  const errors = validateCrossField(formState);
-  const warnings = validateWarnings(formState);
 
-  const bRaces = pruneRepeatingSection(formState.b_races);
-  const otherEvents = pruneRepeatingSection(formState.other_events);
+  const weeklyScheduleRaw = expandGrid(formState.weekly_schedule?.grid);
+  const formStateForRules = { ...formState, weekly_schedule: weeklyScheduleRaw };
+
+  const errors = validateCrossField(formStateForRules);
+  const warnings = validateWarnings(formStateForRules);
+
+  const bRaces = pruneRepeatingSection(
+    (formState.b_races ?? []).map(resolveBRace),
+  );
+  const otherEvents = pruneRepeatingSection(
+    (formState.other_events ?? []).map(collapseSingleType),
+  );
   const notes = pruneOptionalObject(formState.notes);
-  const weeklySchedule = pruneWeeklySchedule(formState.weekly_schedule);
-  const recentResult = pruneOptionalObject(formState.recent_result);
-  const currentFitness = pruneOptionalObject(formState.current_fitness);
+  const weeklySchedule = pruneWeeklySchedule(weeklyScheduleRaw);
+  const recentResultResolved = resolveRecentResult(formState.recent_result);
+  const recentResult = pruneOptionalObject(recentResultResolved);
+  const currentFitness = pruneOptionalObject(
+    withVdot(formState.current_fitness, recentResultResolved),
+  );
+  // output.quality_detail defaults to "specific" (the schema's own
+  // default), so - matching every other section's sparse-by-construction
+  // contract - it's only emitted when the runner picked "generic".
+  const output =
+    formState.output?.quality_detail === "generic"
+      ? { quality_detail: "generic" }
+      : undefined;
 
   const intake = {
-    meta: { schema_version: "1", submitted_at: timestamp },
+    meta: { schema_version: "2", submitted_at: timestamp },
     units: formState.units,
     runner: omitEmpty(formState.runner ?? {}),
     goal: resolveGoal(formState.goal),
+    ...(output && { output }),
     ...(currentFitness && { current_fitness: currentFitness }),
     ...(recentResult && { recent_result: recentResult }),
     ...(weeklySchedule && { weekly_schedule: weeklySchedule }),
