@@ -258,8 +258,10 @@ def _check_drift(tmp_schema_dir: Path, tmp_assets_dir: Path) -> int:
         for path in (
             "schema/intake-schema.json",
             "schema/intake-example.json",
+            "schema/form-constraints.json",
             "schema/SOURCE.md",
             "assets/schema.js",
+            "assets/constraints.js",
         )
         if not _files_equal(Path(tmp_schema_dir.parent, path), REPO_ROOT / path)
     ]

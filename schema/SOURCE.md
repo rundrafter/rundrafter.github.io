@@ -6,9 +6,14 @@ Vendored from the upstream `rundrafter` repo's intake contract
 - `intake-schema.json`
 - `intake-example.json`
 
+Also generated from upstream `config/defaults.yaml` (the keys named in
+`scripts/sync_contract.py`'s `CONSTRAINTS_KEYS`), under the same pin:
+
+- `form-constraints.json`
+
 Pinned upstream revision:
 
-revision: f0a80b68fa8ee0dde08b6a89853dec3e2bcc3a34
+revision: a809cca40b2c3f8c494aad20d160aedc17207ce8
 
 Re-sync with `just sync-contract` (`uv run python scripts/sync_contract.py`).
 
