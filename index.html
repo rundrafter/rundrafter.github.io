@@ -16,18 +16,51 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Runner intake form for RunDrafter - collects your details and assembles them into an intake.json to email in for a training plan."
+      content="RunDrafter: tell us your race and your week, and get back a periodised training plan built around both."
     />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
-    <title>RunDrafter intake</title>
+    <title>RunDrafter - Tell us the race. We'll draft the training.</title>
     <link rel="stylesheet" href="assets/styles.css" />
   </head>
   <body>
     <main>
-      <h1>RunDrafter intake</h1>
+      <header class="brand-header">
+        <img src="assets/logo.svg" alt="" class="brand-logo" width="120" height="100" />
+        <div>
+          <h1>RunDrafter</h1>
+          <p class="tagline">Tell us the race. We'll draft the training.</p>
+        </div>
+      </header>
+
+      <div class="explainer">
+        <p>
+          RunDrafter turns a goal race and the week you actually have into a
+          periodised training plan - phase lengths, weekly volume, and
+          session-by-session paces, grounded in established training
+          methodology and written up by an AI model. Fill in the form below
+          and download the <code>intake.json</code> it produces; email it in
+          and a person runs the pipeline and replies with your plan - this
+          is not instant, so expect a wait of a few days, not a
+          download.
+        </p>
+        <details>
+          <summary>See a sample plan</summary>
+          <img
+            src="assets/plan-sample.png"
+            alt="A sample page from a RunDrafter training plan, showing a week's schedule with session types, distances, and paces"
+            class="plan-sample"
+          />
+        </details>
+      </div>
+
       <form id="intake-form" novalidate>
         <section aria-labelledby="units-heading">
           <h3 id="units-heading">Units</h3>
+          <p class="field-reason">
+            Controls how distances are entered and shown throughout - every
+            distance field below, and every distance in your delivered plan,
+            uses it.
+          </p>
           <label><input type="radio" name="units" value="km" checked /> Kilometres</label>
           <label><input type="radio" name="units" value="mi" /> Miles</label>
         </section>
@@ -38,6 +71,10 @@
           <section aria-labelledby="runner-heading">
             <h3 id="runner-heading">Runner</h3>
             <label for="runner-name">Plan Title (optional)</label>
+            <p class="field-reason">
+              Labels the plan - your own name, a nickname, or a squad label.
+              Left blank, the plan uses your goal race's name instead.
+            </p>
             <input
               id="runner-name"
               name="runner.name"
@@ -46,6 +83,10 @@
             />
 
             <label for="runner-experience">Running experience</label>
+            <p class="field-reason">
+              Sets your rest-day defaults, and, if you skip Recent result
+              below, your starting pace tier.
+            </p>
             <select id="runner-experience" name="runner.experience" required>
               <option value=""></option>
               <option value="new">New to running (less than 1 year)</option>
@@ -63,6 +104,10 @@
               default paces for your experience level instead.
             </p>
             <label for="recent-result-distance">Distance</label>
+            <p class="field-reason">
+              Needed together with your time, below, to calculate your
+              training paces - a time alone isn't enough.
+            </p>
             <select id="recent-result-distance" name="recent_result.distance">
               <option value="">Let RunDrafter decide</option>
               <option value="5k">5 km race</option>
@@ -75,6 +120,9 @@
             <input id="recent-result-time" name="recent_result.time" type="text" />
 
             <label for="recent-result-date">Date</label>
+            <p class="field-reason">
+              A stale result is weighed more cautiously than a fresh one.
+            </p>
             <input id="recent-result-date" name="recent_result.date" type="date" />
           </section>
 
@@ -88,6 +136,7 @@
             <label for="fitness-weekly-distance">
               Typical weekly distance (<span data-unit-label>km</span>)
             </label>
+            <p class="field-reason">Sets the plan's starting weekly volume.</p>
             <input
               id="fitness-weekly-distance"
               name="current_fitness.weekly_distance"
@@ -99,6 +148,7 @@
             <label for="fitness-longest-run">
               Longest run in the last 4-6 weeks (<span data-unit-label>km</span>)
             </label>
+            <p class="field-reason">Informs how your long run should progress.</p>
             <input
               id="fitness-longest-run"
               name="current_fitness.longest_run"
@@ -110,6 +160,11 @@
             <label for="fitness-recent-peak-weekly">
               Highest weekly distance in the last 6 months (<span data-unit-label>km</span>, optional)
             </label>
+            <p class="field-reason">
+              An honest ceiling for how fast your volume can ramp back up;
+              without it, the plan estimates one from your typical week
+              above.
+            </p>
             <input
               id="fitness-recent-peak-weekly"
               name="current_fitness.recent_peak_weekly"
@@ -126,9 +181,17 @@
           <section aria-labelledby="goal-heading">
             <h3 id="goal-heading">Goal</h3>
             <label for="goal-race">Race</label>
+            <p class="field-reason">
+              Labels the plan and its cover page - not used for anything
+              else.
+            </p>
             <input id="goal-race" name="goal.race" type="text" required />
 
             <label for="goal-distance">Distance</label>
+            <p class="field-reason">
+              Determines the plan's entire structure: phase lengths, taper,
+              and pace zones.
+            </p>
             <select id="goal-distance" name="goal.distance" required>
               <option value="5k">5 km</option>
               <option value="10k">10 km</option>
@@ -137,10 +200,15 @@
             </select>
 
             <label for="goal-date">Race date</label>
+            <p class="field-reason">Anchors every phase and week of the plan.</p>
             <input id="goal-date" name="goal.date" type="date" required />
 
             <fieldset>
               <legend>Target time</legend>
+              <p class="field-reason">
+                Which option you pick decides what pace, if any, the plan
+                trains you toward.
+              </p>
               <label>
                 <input
                   type="radio"
@@ -165,12 +233,20 @@
             </fieldset>
 
             <label for="goal-start-date">Plan start date</label>
+            <p class="field-reason">
+              Anchors the plan's first week, and, combined with the race
+              date above, whether there's enough time to build in.
+            </p>
             <input id="goal-start-date" name="goal.start_date" type="date" required />
           </section>
 
           <section aria-labelledby="b-races-heading">
             <h3 id="b-races-heading">B races</h3>
             <p>Optional - secondary goal races, up to three.</p>
+            <p class="field-reason">
+              So the plan can schedule a short de-load around races you're
+              already committed to, rather than only the goal race.
+            </p>
             <div id="b-races-list"></div>
             <button type="button" id="add-b-race">Add B race</button>
           </section>
@@ -220,6 +296,10 @@
               <p>
                 All half-days start ticked. Untick the ones you're
                 <strong>not</strong> available to run.
+              </p>
+              <p class="field-reason">
+                So the plan fits the week you actually have, instead of one
+                you'd need to adapt yourself to.
               </p>
               <table>
                 <thead>
@@ -271,6 +351,10 @@
 
             <fieldset>
               <legend>Weekly session template</legend>
+              <p class="field-reason">
+                So a standing weekly commitment (a club night, a parkrun, a
+                gym session) gets built around, instead of collided with.
+              </p>
               <p>
                 Pin broad session types to specific days - e.g. a Tuesday
                 quality session, a Saturday long run, a Sunday recovery jog,
@@ -409,6 +493,10 @@
               a charity fun run or a club social. No de-load is inserted; the
               plan folds the event into that day's easy or long run.
             </p>
+            <p class="field-reason">
+              So a real commitment on the calendar doesn't collide with a
+              prescribed hard session.
+            </p>
             <div id="other-events-list"></div>
             <button type="button" id="add-other-event">Add other event</button>
           </section>
@@ -465,9 +553,39 @@
           <section aria-labelledby="notes-heading">
             <h3 id="notes-heading">Notes</h3>
             <label for="notes-other">Anything else the plan should know? (optional)</label>
+            <p class="field-reason">
+              Not everything fits a structured field above - an old injury
+              that's now resolved but still shapes preference, a race
+              history detail, a scheduling quirk the grid can't express. For
+              example: "I get shin pain if I ramp weekly distance too
+              quickly" or "I'd rather do my long run on Sunday even in weeks
+              where Saturday looks free." This text is passed to the plan's
+              AI-written design brief as your own words - it can influence
+              phrasing and emphasis, but not override any deterministic rule
+              like phase lengths, volume, or taper. See the disclaimer below.
+            </p>
             <textarea id="notes-other" name="notes.other" rows="4"></textarea>
           </section>
         </div>
+
+        <section id="contact-section" aria-labelledby="contact-heading">
+          <h3 id="contact-heading">Before you send it</h3>
+          <p class="disclaimer">
+            Your answers, including the notes field above, are processed by
+            an AI model grounded in RunDrafter's training methodology to
+            help generate your plan.
+          </p>
+          <p class="disclaimer">
+            This plan is training guidance only, not medical or coaching
+            advice. Consult a medical professional for any pain or injury,
+            or a qualified coach for personalised guidance.
+          </p>
+          <p>
+            Questions before or after submitting - anything other than
+            sending in a completed intake - go to
+            <a href="mailto:eric.parkin@protonmail.com">eric.parkin@protonmail.com</a>.
+          </p>
+        </section>
 
         <div id="form-errors" role="alert" aria-live="polite" tabindex="-1"></div>
 
