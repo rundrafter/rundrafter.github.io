@@ -358,13 +358,16 @@ if (form) {
   const gridCells = buildAvailabilityGrid();
   gridCells.forEach(setupGridCell);
   const updateUnitLabels = setupUnitLabels(form);
-  updateUnitLabels();
   setupRepeatingGroup("b-races-list", "b-race-template", "add-b-race", {
     maxRows: 3,
   });
+  // A row cloned from the template carries the template's own `km` unit
+  // labels, so refresh them on add - otherwise a row added after the
+  // runner switched to miles keeps saying km.
   setupRepeatingGroup(
     "other-events-list",
     "other-event-template",
     "add-other-event",
+    { onRowAdded: () => updateUnitLabels() },
   );
 }
