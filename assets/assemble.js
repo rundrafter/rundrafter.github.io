@@ -1,4 +1,10 @@
-import { computeVdotFromResult } from "./vdot.js";
+import {
+  computeVdot,
+  computeVdotFromResult,
+  DISTANCE_METRES,
+  parseTimeToMinutes,
+} from "./vdot.js";
+import CONSTRAINTS from "./constraints.js";
 
 const DAY_NAMES = [
   "Monday",
@@ -11,6 +17,15 @@ const DAY_NAMES = [
 ];
 
 const HALVES = ["morning", "evening"];
+
+// taper_weeks only has marathon/half/shorter entries - 5k and 10k share
+// "shorter", mirroring validate.py's _TAPER_KEY_BY_DISTANCE.
+const TAPER_KEY_BY_DISTANCE = {
+  marathon: "marathon",
+  half: "half",
+  "5k": "shorter",
+  "10k": "shorter",
+};
 
 // Mirrors expand/schedule.py's NON_RUNNING_TYPES and SKIP_TAILORABLE_TYPES,
 // which the flexible-type rules below are stated in terms of.
@@ -259,6 +274,30 @@ function daysBetween(aIso, bIso) {
   return (new Date(aIso) - new Date(bIso)) / 86_400_000;
 }
 
+// The Monday-Sunday week block an ISO date string falls in, as a UTC
+// midnight Date on that week's Monday. `Date#getUTCDay` is Sunday-indexed
+// (0-6); this rebases to the Monday-indexed weekday validate.py's
+// `date.weekday()` uses.
+function mondayOf(iso) {
+  const d = new Date(iso);
+  const mondayIndexedWeekday = (d.getUTCDay() + 6) % 7;
+  d.setUTCDate(d.getUTCDate() - mondayIndexedWeekday);
+  return d;
+}
+
+// Counts the Monday-Sunday week blocks spanning `startIso` to `endIso`,
+// mirroring validate.py's `_week_count`: a mid-week start's partial first
+// week still counts as week 1, so this is not `floor(days / 7)`.
+function weekCount(startIso, endIso) {
+  return (mondayOf(endIso) - mondayOf(startIso)) / 86_400_000 / 7 + 1;
+}
+
+// The weekday name an ISO date string falls on, Monday-indexed to match
+// DAY_NAMES.
+function weekdayOf(iso) {
+  return DAY_NAMES[(new Date(iso).getUTCDay() + 6) % 7];
+}
+
 // Days whose grid has both halves unticked (see isDayFullyUnavailable) - never
 // a running day, regardless of what the resolver later decides.
 function getUnavailableDays(schedule) {
@@ -375,48 +414,66 @@ function validateCrossField(formState) {
     );
   }
 
-  errors.push(...validateFlexibleTypes(schedule.preferred_sessions));
+  errors.push(
+    ...validateFlexibleTypes(
+      schedule.preferred_sessions,
+      (session) => `Weekly session "${session.day || session.description || "entry"}"`,
+    ),
+  );
+  errors.push(
+    ...validateFlexibleTypes(
+      formState.other_events,
+      (evt) => `Other event on ${evt.date || "unknown date"}`,
+    ),
+  );
   errors.push(
     ...validateSessionRanges(schedule.preferred_sessions, "Weekly session"),
   );
   errors.push(...validateSessionRanges(formState.other_events, "Other event"));
 
+  validatePlanWindow(goal, errors);
+  validateRunDayFloor(schedule, errors);
+  validateQualityTouchpoints(schedule.preferred_sessions, errors);
+
   return errors;
 }
 
 // Mirrors validate.py's _validate_flexible_types (FLEXIBLE_TYPE_INCLUDES_LONG,
-// FLEXIBLE_TYPE_MIXES_MODES, FLEXIBLE_SKIP_TAILORING_UNSUPPORTED). A day
-// offering several types leaves the pick to the per-week selection, but the
-// pipeline still settles that day's *structural* role once for the whole
-// plan - whether it pins the long run, whether it's a running day, and whether a
-// coach owns its detail - so a set that leaves one of those unanswerable is
-// rejected here. Single-type rows are untouched.
-function validateFlexibleTypes(sessions) {
+// FLEXIBLE_TYPE_MIXES_MODES, FLEXIBLE_SKIP_TAILORING_UNSUPPORTED). An entry
+// offering several types leaves the pick to the per-week (or per-event)
+// selection, but the pipeline still settles its *structural* role once for
+// the whole plan - whether it pins the long run, whether it's a running
+// commitment, and whether a coach owns its detail - so a set that leaves
+// one of those unanswerable is rejected here. Single-type entries are
+// untouched. Shared between weekly_schedule.preferred_sessions and
+// other_events, whose `type` field accepts the same scalar-or-multi-type-
+// array form; `describe` renders each entry's identifying prefix for a
+// message (e.g. `Weekly session "Tuesday"`).
+function validateFlexibleTypes(entries, describe) {
   const errors = [];
-  for (const session of sessions ?? []) {
-    const types = preferredTypes(session);
+  for (const entry of entries ?? []) {
+    const types = preferredTypes(entry);
     if (types.length < 2) continue;
-    const rowLabel = session.day || session.description || "Weekly session";
+    const where = describe(entry);
     const offered = types.join(", ");
 
     if (types.includes("long")) {
       errors.push(
-        `Weekly session "${rowLabel}" offers several types (${offered}), one of them the long run. The long run pins your long-run day for the whole plan, so it can't be one option among several - give it a day of its own.`,
+        `${where} offers several types (${offered}), one of them the long run. The long run pins your long-run day for the whole plan, so it can't be one option among several - give it a day of its own.`,
       );
     }
 
     const nonRunning = types.filter((type) => NON_RUNNING_TYPES.has(type));
     if (nonRunning.length > 0 && nonRunning.length < types.length) {
       errors.push(
-        `Weekly session "${rowLabel}" mixes running and non-running types (${offered}). Rest days are placed once for the whole plan and need a definite answer to whether the day is a running day, so a day offering several types must be either all running or all non-running.`,
+        `${where} mixes running and non-running types (${offered}). Rest days are placed once for the whole plan and need a definite answer to whether the day is a running day, so a set of types must be either all running or all non-running.`,
       );
     }
 
-    const skippingTailoring =
-      session.skip_tailoring === true || session.tailored === false;
+    const skippingTailoring = entry.skip_tailoring === true || entry.tailored === false;
     if (skippingTailoring && !types.every((t) => SKIP_TAILORABLE_TYPES.has(t))) {
       errors.push(
-        `Weekly session "${rowLabel}" skips tailoring but offers a type with no detail to hand over (${offered}). Skipping tailoring promises a coach owns that day's detail, so every type the day offers must be one of: ${[...SKIP_TAILORABLE_TYPES].sort().join(", ")}.`,
+        `${where} skips tailoring but offers a type with no detail to hand over (${offered}). Skipping tailoring promises a coach owns that day's detail, so every type offered must be one of: ${[...SKIP_TAILORABLE_TYPES].sort().join(", ")}.`,
       );
     }
   }
@@ -444,9 +501,222 @@ function validateSessionRanges(entries, label) {
   return errors;
 }
 
+// Mirrors validate.py's _validate_plan_window: rejects a plan window
+// shorter than base + minimum build + taper. A marathon goal counts *both*
+// base phases (phase_weeks.base and phase_weeks.marathon_base) - both are
+// standing phases in the marathon sequence; only sharpening is optional
+// and the floor deliberately omits it.
+function validatePlanWindow(goal, errors) {
+  const distance = goal.distance;
+  if (!goal.start_date || !goal.date || !distance || !TAPER_KEY_BY_DISTANCE[distance]) {
+    return;
+  }
+  if (goal.start_date >= goal.date) return; // date ordering already covers this
+
+  let minimum =
+    CONSTRAINTS.phase_weeks.base[0] +
+    CONSTRAINTS.phase_weeks.build_min +
+    CONSTRAINTS.taper_weeks[TAPER_KEY_BY_DISTANCE[distance]];
+  if (distance === "marathon") {
+    minimum += CONSTRAINTS.phase_weeks.marathon_base[0];
+  }
+
+  const available = weekCount(goal.start_date, goal.date);
+  if (available < minimum) {
+    errors.push(
+      `The window from goal.start_date (${goal.start_date}) to goal.date` +
+        ` (${goal.date}) is ${available} week(s), fewer than the ${minimum}` +
+        ` week(s) a ${distance} goal needs for base, minimum build, and taper.`,
+    );
+  }
+}
+
+// Mirrors validate.py's _validate_run_day_floor: rejects a grid that can
+// never reach the peak run-day floor, checkable before the resolver runs -
+// the count of weekdays offering at least one available half is an upper
+// bound on trainable days no rest-day placement can raise.
+function validateRunDayFloor(schedule, errors) {
+  const availability = schedule.availability ?? {};
+  const trainableUpperBound = DAY_NAMES.filter(
+    (day) => !isDayFullyUnavailable(availability, day),
+  ).length;
+  const floor = CONSTRAINTS.min_run_days_at_peak;
+  if (trainableUpperBound < floor) {
+    errors.push(
+      `The availability grid offers at least one available half on only` +
+        ` ${trainableUpperBound} weekday(s), fewer than the ${floor} running` +
+        ` days a peak build week needs (schedule.min_run_days_at_peak). No` +
+        " rest-day placement can raise this upper bound on trainable days.",
+    );
+  }
+}
+
+// Mirrors validate.py's _validate_quality_touchpoints. The **ceiling**
+// counts a pinned type: "long" entry alongside the quality days - the
+// methodology states the number that way ("count the long run, any hard
+// anchor, *and* the midweek quality together"). **Adjacency** does not: a
+// Saturday anchor beside a Sunday long run is the canonical amateur week,
+// and the no-adjacent-quality rule governs where the expander places its
+// own sessions, not what a runner pins. Adjacency wraps the week
+// (Sunday/Monday count as adjacent), since the weekly template repeats.
+function validateQualityTouchpoints(preferred, errors) {
+  const qualityDays = [
+    ...new Set(
+      (preferred ?? [])
+        .filter((p) => preferredTypes(p).includes("quality"))
+        .map((p) => p.day),
+    ),
+  ].sort((a, b) => DAY_NAMES.indexOf(a) - DAY_NAMES.indexOf(b));
+  const longDays = new Set(
+    (preferred ?? []).filter((p) => preferredTypes(p).includes("long")).map((p) => p.day),
+  );
+  const touchpointDays = [...new Set([...qualityDays, ...longDays])].sort(
+    (a, b) => DAY_NAMES.indexOf(a) - DAY_NAMES.indexOf(b),
+  );
+
+  const ceiling = CONSTRAINTS.max_quality_touchpoints;
+  if (touchpointDays.length > ceiling) {
+    errors.push(
+      `Pinned quality and long-run days (${touchpointDays.join(", ")}) number` +
+        ` ${touchpointDays.length}, more than the configured ceiling of` +
+        ` ${ceiling} quality touchpoints a week (schedule.max_quality_touchpoints).` +
+        " The long run is a touchpoint in its own right.",
+    );
+  }
+
+  for (let i = 0; i < qualityDays.length; i++) {
+    for (let j = i + 1; j < qualityDays.length; j++) {
+      const idxA = DAY_NAMES.indexOf(qualityDays[i]);
+      const idxB = DAY_NAMES.indexOf(qualityDays[j]);
+      const diff = Math.abs(idxA - idxB);
+      if (diff === 1 || diff === DAY_NAMES.length - 1) {
+        errors.push(
+          `Pinned quality days ${qualityDays[i]} and ${qualityDays[j]} are` +
+            " adjacent (the weekly template repeats, so Sunday and Monday" +
+            " count as adjacent too); quality sessions should not fall on" +
+            " consecutive days.",
+        );
+      }
+    }
+  }
+}
+
+// Every mid-plan dated event: each B race and each other event. Mirrors
+// validate.py's _event_entries_for_clash_check - the goal race is
+// deliberately excluded (road races and long runs both land on Sundays, so
+// including it warned on almost every intake, and the warning carries no
+// information there anyway: race week schedules no long run for the race
+// to displace).
+function eventEntriesForClashCheck(formState) {
+  const events = (formState.b_races ?? [])
+    .filter((race) => race?.date)
+    .map((race) => ({
+      section: "b_races",
+      label: race.name || "",
+      date: race.date,
+    }));
+  events.push(
+    ...(formState.other_events ?? [])
+      .filter((evt) => evt?.date)
+      .map((evt) => ({
+        section: "other_events",
+        label: preferredTypes(evt).join("/"),
+        date: evt.date,
+      })),
+  );
+  return events;
+}
+
+// Mirrors validate.py's _validate_event_clashes: warns, without blocking,
+// when a mid-plan event lands on a weekday with no available half or a
+// weekday carrying a preferred session. The event always wins - expand.py
+// schedules it on its date regardless of the grid or any pinned session it
+// displaces - so this is advisory only.
+function validateEventClashes(formState, schedule, warnings) {
+  const availability = schedule.availability ?? {};
+  const preferred = schedule.preferred_sessions ?? [];
+  const preferredByDay = new Map();
+  for (const p of preferred) {
+    if (!preferredByDay.has(p.day)) preferredByDay.set(p.day, []);
+    preferredByDay.get(p.day).push(p);
+  }
+
+  for (const { section, label, date } of eventEntriesForClashCheck(formState)) {
+    const weekday = weekdayOf(date);
+
+    if (isDayFullyUnavailable(availability, weekday)) {
+      warnings.push(
+        `${section} event '${label}' on ${date} falls on ${weekday}, which` +
+          " has no available half in the availability grid. The event takes" +
+          " precedence and will still be scheduled on that date.",
+      );
+      continue;
+    }
+
+    const clashing = preferredByDay.get(weekday);
+    if (clashing) {
+      const offered = clashing.map((p) => preferredTypes(p).join("/")).join(", ");
+      warnings.push(
+        `${section} event '${label}' on ${date} falls on ${weekday}, which` +
+          ` carries a preferred session (${offered}). The event takes` +
+          " precedence and displaces it that week.",
+      );
+    }
+  }
+}
+
+// Mirrors calibrate.py's _goal_consistency: warns, without blocking, when
+// the goal-implied VDOT diverges from the runner's current VDOT by more
+// than the configured threshold. Skipped for a "finish" or "suggest" goal -
+// there's no specific goal pace to compare, and "suggest" is itself
+// calibrated from current fitness so it's consistent by construction - and
+// deferred until a recent result gives a current VDOT to compare against,
+// since fitness is collected after the goal (design.md, "re-evaluated when
+// the fitness inputs change").
+function validateGoalConsistency(goal, recentResultResolved, warnings) {
+  if (!goal.distance) return;
+  const mode = goal.target_time_mode ?? "specific";
+  if (mode !== "specific") return;
+  const targetTime = composeStructuredTime({
+    h: goal.target_time_h,
+    m: goal.target_time_m,
+    s: goal.target_time_s,
+  });
+  if (!targetTime) return;
+  if (!recentResultResolved?.distance || !recentResultResolved?.time) return;
+
+  let currentVdot;
+  let goalVdot;
+  try {
+    currentVdot = computeVdotFromResult(recentResultResolved);
+    goalVdot = computeVdot(DISTANCE_METRES[goal.distance], parseTimeToMinutes(targetTime));
+  } catch {
+    return;
+  }
+
+  const threshold = CONSTRAINTS.consistency_threshold_vdot;
+  const gap = Math.round((goalVdot - currentVdot) * 100) / 100;
+  const roundedGoalVdot = Math.round(goalVdot * 100) / 100;
+  const roundedCurrentVdot = Math.round(currentVdot * 100) / 100;
+
+  if (gap < -threshold) {
+    warnings.push(
+      `Goal of ${targetTime} (${goal.distance}) implies VDOT ${roundedGoalVdot},` +
+        ` below your current VDOT of ${roundedCurrentVdot}. Training paces` +
+        " reflect current fitness; goal pace is used only for goal-pace segments.",
+    );
+  } else if (gap > threshold) {
+    warnings.push(
+      `Goal of ${targetTime} (${goal.distance}) implies VDOT ${roundedGoalVdot},` +
+        ` which is ${gap} points above your current VDOT of ${roundedCurrentVdot}.` +
+        " Consider a more conservative target or re-testing fitness.",
+    );
+  }
+}
+
 // Non-blocking advisories (see rundrafter's docs/webform-architecture.md's
 // "Non-blocking" rules).
-function validateWarnings(formState) {
+function validateWarnings(formState, recentResultResolved) {
   const warnings = [];
   const goal = formState.goal ?? {};
   const recentResult = formState.recent_result ?? {};
@@ -469,6 +739,9 @@ function validateWarnings(formState) {
     );
   }
 
+  validateEventClashes(formState, schedule, warnings);
+  validateGoalConsistency(goal, recentResultResolved, warnings);
+
   return warnings;
 }
 
@@ -477,9 +750,10 @@ export function assemble(formState, { now } = {}) {
 
   const weeklyScheduleRaw = expandGrid(formState.weekly_schedule?.grid);
   const formStateForRules = { ...formState, weekly_schedule: weeklyScheduleRaw };
+  const recentResultResolved = resolveRecentResult(formState.recent_result);
 
   const errors = validateCrossField(formStateForRules);
-  const warnings = validateWarnings(formStateForRules);
+  const warnings = validateWarnings(formStateForRules, recentResultResolved);
 
   const bRaces = pruneRepeatingSection(
     (formState.b_races ?? []).map(resolveBRace),
@@ -489,7 +763,6 @@ export function assemble(formState, { now } = {}) {
   );
   const notes = pruneOptionalObject(formState.notes);
   const weeklySchedule = pruneWeeklySchedule(weeklyScheduleRaw);
-  const recentResultResolved = resolveRecentResult(formState.recent_result);
   const recentResult = pruneOptionalObject(recentResultResolved);
   const currentFitness = pruneOptionalObject(
     withVdot(formState.current_fitness, recentResultResolved),
