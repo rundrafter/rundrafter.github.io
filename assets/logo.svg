@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 100">
+  <!-- Six week-bars rising left to right (a periodisation curve), overlaid by
+       a single swoosh (a runner's forward lean / a track bend). Two colours,
+       no gradients, no text - see branding/README.md. -->
+  <g fill="#1B6E5E">
+    <rect x="8" y="74" width="12" height="14" rx="2" />
+    <rect x="26" y="64" width="12" height="24" rx="2" />
+    <rect x="44" y="52" width="12" height="36" rx="2" />
+    <rect x="62" y="38" width="12" height="50" rx="2" />
+    <rect x="80" y="24" width="12" height="64" rx="2" />
+    <rect x="98" y="8" width="12" height="80" rx="2" />
+  </g>
+  <path d="M4,92 C40,86 50,40 116,4" fill="none" stroke="#123F35"
+        stroke-width="7" stroke-linecap="round" />
+</svg>

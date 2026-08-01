@@ -8,6 +8,9 @@ import sys
 import tempfile
 import urllib.request
 from pathlib import Path
+from typing import Any
+
+import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_DIR = REPO_ROOT / "schema"
@@ -22,6 +25,24 @@ UPSTREAM_RAW_BASE = "https://raw.githubusercontent.com/rundrafter/rundrafter"
 UPSTREAM_CONTRACT_DIR = "src/rundrafter/validate"
 CONTRACT_FILES = ("intake-schema.json", "intake-example.json")
 
+# Upstream's config, at the repo root rather than under a stage subpackage.
+# Only the dotted paths in CONSTRAINTS_KEYS are read from it - the rest of
+# the file is training-methodology config the form has no use for.
+UPSTREAM_CONFIG_FILE = "config/defaults.yaml"
+
+# The browser-checkable thresholds vendored into form-constraints.json,
+# generated rather than transcribed (design.md, "Thresholds are generated
+# from config, never transcribed") - each value is a dotted path into
+# config/defaults.yaml.
+CONSTRAINTS_KEYS = {
+    "phase_weeks": "periodisation.phase_weeks",
+    "taper_weeks": "periodisation.taper_weeks",
+    "min_run_days_at_peak": "schedule.min_run_days_at_peak",
+    "max_quality_touchpoints": "schedule.max_quality_touchpoints",
+    "consistency_threshold_vdot": "goal_check.consistency_threshold_vdot",
+    "vdot_match_tolerance": "calibration.vdot_match_tolerance",
+}
+
 # Not vendored (they're a private repo's internals, reflected here only as
 # client-side JS in assets/assemble.js) - just hash-pinned, so a rule change
 # upstream shows up as drift instead of silently diverging. See upstream's
@@ -35,6 +56,11 @@ Vendored from the upstream `rundrafter` repo's intake contract
 
 - `intake-schema.json`
 - `intake-example.json`
+
+Also generated from upstream `config/defaults.yaml` (the keys named in
+`scripts/sync_contract.py`'s `CONSTRAINTS_KEYS`), under the same pin:
+
+- `form-constraints.json`
 
 Pinned upstream revision:
 
@@ -111,6 +137,8 @@ def _sync(schema_dir: Path, assets_dir: Path) -> None:
     if SOURCE_MD.is_file():
         rules_revision = _read_pinned(SCHEMA_DIR, "rules_revision", default=revision)
     _write_schema_js(schema_dir, assets_dir)
+    config = _fetch_config(revision)
+    _write_constraints(config, schema_dir, assets_dir)
     (schema_dir / "SOURCE.md").write_text(
         SOURCE_MD_TEMPLATE.format(revision=revision, rules_revision=rules_revision)
     )
@@ -147,6 +175,7 @@ def _sync_from_sibling(dest_dir: Path) -> str:
             "--format=%H",
             "--",
             *(f"{UPSTREAM_CONTRACT_DIR}/{n}" for n in CONTRACT_FILES),
+            UPSTREAM_CONFIG_FILE,
         ],
         cwd=UPSTREAM_SIBLING,
         capture_output=True,
@@ -193,14 +222,46 @@ def _write_schema_js(schema_dir: Path, assets_dir: Path) -> None:
     (assets_dir / "schema.js").write_text(js)
 
 
+def _fetch_config(revision: str) -> dict[str, Any]:
+    if UPSTREAM_SIBLING.is_dir():
+        text = (UPSTREAM_SIBLING / UPSTREAM_CONFIG_FILE).read_text()
+    else:
+        url = f"{UPSTREAM_RAW_BASE}/{revision}/{UPSTREAM_CONFIG_FILE}"
+        with urllib.request.urlopen(url) as response:  # noqa: S310
+            text = response.read().decode("utf-8")
+    config: dict[str, Any] = yaml.safe_load(text)
+    return config
+
+
+def _extract_constraints(config: dict[str, Any]) -> dict[str, Any]:
+    constraints: dict[str, Any] = {}
+    for key, dotted_path in CONSTRAINTS_KEYS.items():
+        value: Any = config
+        for part in dotted_path.split("."):
+            value = value[part]
+        constraints[key] = value
+    return constraints
+
+
+def _write_constraints(config: dict[str, Any], schema_dir: Path, assets_dir: Path) -> None:
+    constraints = _extract_constraints(config)
+    (schema_dir / "form-constraints.json").write_text(
+        json.dumps(constraints, indent=2) + "\n"
+    )
+    js = "export default " + json.dumps(constraints, indent=2) + ";\n"
+    (assets_dir / "constraints.js").write_text(js)
+
+
 def _check_drift(tmp_schema_dir: Path, tmp_assets_dir: Path) -> int:
     stale = [
         path
         for path in (
             "schema/intake-schema.json",
             "schema/intake-example.json",
+            "schema/form-constraints.json",
             "schema/SOURCE.md",
             "assets/schema.js",
+            "assets/constraints.js",
         )
         if not _files_equal(Path(tmp_schema_dir.parent, path), REPO_ROOT / path)
     ]

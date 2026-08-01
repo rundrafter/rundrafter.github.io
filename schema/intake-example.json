@@ -1,6 +1,6 @@
 {
   "meta": {
-    "schema_version": "1",
+    "schema_version": "2",
     "submitted_at": "2026-06-22T09:15:00+10:00"
   },
   "units": "km",
@@ -23,7 +23,8 @@
   "current_fitness": {
     "weekly_distance": 40,
     "longest_run": 18,
-    "recent_peak_weekly": 50
+    "recent_peak_weekly": 50,
+    "vdot": 44.15
   },
   "weekly_schedule": {
     "availability": {
@@ -33,7 +34,7 @@
     "preferred_sessions": [
       {"day": "Sunday", "type": "long"},
       {"day": "Tuesday", "type": "quality", "description": "intervals with running club"},
-      {"day": "Saturday", "type": "quality", "description": "parkrun", "distance_min": 5},
+      {"day": "Saturday", "type": "quality", "description": "parkrun", "distance_min": 5, "time_of_day": "morning"},
       {"day": "Wednesday", "type": "strength", "description": "gym weights and core", "distance_max": 0},
       {"day": "Friday", "type": "strength", "description": "gym weights and core", "distance_max": 0}
     ]

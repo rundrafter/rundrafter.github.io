@@ -12,12 +12,24 @@ from pathlib import Path
 from typing import Any
 
 import jsonschema
+import pytest
 from playwright.sync_api import Page
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
 NOW = "2026-01-01T00:00:00.000Z"
 SCHEMA = json.loads((REPO_ROOT / "schema" / "intake-schema.json").read_text())
+CONSTRAINTS = json.loads((REPO_ROOT / "schema" / "form-constraints.json").read_text())
+
+DAY_NAMES = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+]
 
 
 def load_fixture(name: str) -> dict[str, Any]:
@@ -28,6 +40,23 @@ def load_fixture(name: str) -> dict[str, Any]:
 def valid_state() -> dict[str, Any]:
     """A minimal form-state covering only the required sections."""
     return load_fixture("valid.json")
+
+
+def cell(state: str = "session", **fields: Any) -> dict[str, Any]:
+    """One tri-state availability-grid cell's form-state fragment."""
+    return {"state": state, **fields}
+
+
+def grid(**day_halves: dict[str, Any]) -> dict[str, Any]:
+    """Build a weekly_schedule.grid form-state fragment.
+
+    Keys are `<Day>_<half>` (e.g. `Tuesday_evening`); values are `cell(...)`.
+    """
+    result: dict[str, Any] = {}
+    for key, value in day_halves.items():
+        day, half = key.rsplit("_", 1)
+        result.setdefault(day, {})[half] = value
+    return result
 
 
 def run_assemble(page: Page, form_state: dict[str, Any], now: str = NOW):
@@ -44,6 +73,26 @@ def run_assemble(page: Page, form_state: dict[str, Any], now: str = NOW):
 def assert_schema_valid(intake: dict[str, Any]) -> None:
     """Validate an assembled intake object against the vendored schema."""
     jsonschema.validate(instance=intake, schema=SCHEMA)
+
+
+def normalize_preferred_sessions(intake: dict[str, Any]) -> dict[str, Any]:
+    """Normalize an intake's preferred_sessions for order/time_of_day-
+    tolerant comparison.
+
+    The tri-state grid always attaches time_of_day (the cell's column) and
+    iterates in a fixed day/half order rather than insertion order, so a
+    reproduction of a hand-authored fixture (which may omit time_of_day and
+    use its own entry order) needs both normalized away before comparing.
+    """
+    schedule = intake.get("weekly_schedule")
+    if not schedule or "preferred_sessions" not in schedule:
+        return intake
+    sessions = [
+        {k: v for k, v in session.items() if k != "time_of_day"}
+        for session in schedule["preferred_sessions"]
+    ]
+    sessions.sort(key=lambda s: (DAY_NAMES.index(s["day"]), json.dumps(s.get("type"))))
+    return {**intake, "weekly_schedule": {**schedule, "preferred_sessions": sessions}}
 
 
 def test_valid_state_has_no_errors(page: Page) -> None:
@@ -77,7 +126,9 @@ def test_b_race_on_or_after_goal_date_blocks(page: Page) -> None:
             "name": "Tune-up 10k",
             "distance": "10k",
             "date": state["goal"]["date"],
-            "target_time": "45:00",
+            "target_time_mode": "specific",
+            "target_time_m": 45,
+            "target_time_s": 0,
         }
     ]
     result = run_assemble(page, state)
@@ -92,12 +143,32 @@ def test_b_race_before_goal_date_passes(page: Page) -> None:
             "name": "Tune-up 10k",
             "distance": "10k",
             "date": "2026-08-01",
-            "target_time": "45:00",
+            "target_time_mode": "specific",
+            "target_time_m": 45,
+            "target_time_s": 0,
         }
     ]
     result = run_assemble(page, state)
     assert result["errors"] == []
     assert_schema_valid(result["intake"])
+
+
+def test_b_race_finish_mode_omits_projection(page: Page) -> None:
+    """A B race with 'Finish' selected assembles target_time: 'finish', with
+    no structured time required (B races have no 'suggest' projection)."""
+    state = valid_state()
+    state["b_races"] = [
+        {
+            "name": "Tune-up 10k",
+            "distance": "10k",
+            "date": "2026-08-01",
+            "target_time_mode": "finish",
+        }
+    ]
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert_schema_valid(result["intake"])
+    assert result["intake"]["b_races"][0]["target_time"] == "finish"
 
 
 def test_other_event_on_or_after_goal_date_blocks(page: Page) -> None:
@@ -139,7 +210,9 @@ def test_b_race_on_start_date_blocks(page: Page) -> None:
             "name": "Tune-up 10k",
             "distance": "10k",
             "date": state["goal"]["start_date"],
-            "target_time": "45:00",
+            "target_time_mode": "specific",
+            "target_time_m": 45,
+            "target_time_s": 0,
         }
     ]
     result = run_assemble(page, state)
@@ -176,7 +249,9 @@ def test_duplicate_event_dates_blocks(page: Page) -> None:
             "name": "Tune-up 10k",
             "distance": "10k",
             "date": shared_date,
-            "target_time": "45:00",
+            "target_time_mode": "specific",
+            "target_time_m": 45,
+            "target_time_s": 0,
         }
     ]
     state["other_events"] = [
@@ -186,29 +261,39 @@ def test_duplicate_event_dates_blocks(page: Page) -> None:
     assert any("shares a date" in e.lower() for e in result["errors"])
 
 
-def test_long_run_entry_on_unavailable_day_blocks(page: Page) -> None:
-    """A `type: "long"` weekly session on a fully-unticked day blocks
-    handoff (ADR 019 - long_run_day is gone; the template entry is the only
-    override)."""
+def test_long_run_entry_with_other_half_unavailable_passes(page: Page) -> None:
+    """A `type: "long"` session pinned to one half of a day, with that day's
+    *other* half marked unavailable, assembles cleanly. Upstream's
+    LONG_RUN_DAY_UNAVAILABLE (a `long` entry on a day whose *both* halves are
+    unticked) is not re-implemented here: a session can only live in a cell
+    that is itself in the "session" state, which by definition is not
+    "unavailable", so a day can never be fully unavailable while also
+    carrying a preferred session on it - the tri-state grid makes the
+    contradiction structurally unreachable (stays upstream-only, catching
+    only a hand-edited intake.json's independent `availability` /
+    `preferred_sessions` keys)."""
     state = valid_state()
-    state["weekly_schedule"]["availability"] = {
-        "Tuesday": {"morning": False, "evening": False}
+    state["weekly_schedule"] = {
+        "grid": grid(
+            Tuesday_morning=cell("unavailable"),
+            Tuesday_evening=cell(type=["long"]),
+        )
     }
-    state["weekly_schedule"]["preferred_sessions"] = [
-        {"day": "Tuesday", "type": "long"}
-    ]
     result = run_assemble(page, state)
-    assert any('type: "long"' in e for e in result["errors"])
+    assert result["errors"] == []
+    assert_schema_valid(result["intake"])
 
 
 def test_multiple_long_entries_blocks(page: Page) -> None:
     """More than one `type: "long"` weekly session blocks handoff - at most
     one is allowed to pin the long-run day (ADR 019)."""
     state = valid_state()
-    state["weekly_schedule"]["preferred_sessions"] = [
-        {"day": "Sunday", "type": "long"},
-        {"day": "Saturday", "type": "long"},
-    ]
+    state["weekly_schedule"] = {
+        "grid": grid(
+            Sunday_evening=cell(type=["long"]),
+            Saturday_morning=cell(type=["long"]),
+        )
+    }
     result = run_assemble(page, state)
     assert any(
         "more than one" in e and 'type: "long"' in e for e in result["errors"]
@@ -216,17 +301,20 @@ def test_multiple_long_entries_blocks(page: Page) -> None:
 
 
 def test_flexible_type_assembles_as_array(page: Page) -> None:
-    """A day offering several types keeps the array form through assembly and
-    validates against the vendored schema."""
+    """A cell offering several types keeps the array form through assembly
+    and validates against the vendored schema."""
     state = valid_state()
-    state["weekly_schedule"]["preferred_sessions"] = [
-        {"day": "Wednesday", "type": ["easy", "quality"], "description": "club night"}
-    ]
+    state["weekly_schedule"] = {
+        "grid": grid(
+            Wednesday_morning=cell(type=["easy", "quality"], description="club night")
+        )
+    }
     result = run_assemble(page, state)
     assert result["errors"] == []
     assert_schema_valid(result["intake"])
     session = result["intake"]["weekly_schedule"]["preferred_sessions"][0]
     assert session["type"] == ["easy", "quality"]
+    assert session["time_of_day"] == "morning"
 
 
 def test_single_ticked_type_collapses_to_string(page: Page) -> None:
@@ -234,9 +322,9 @@ def test_single_ticked_type_collapses_to_string(page: Page) -> None:
     pinned case - it collapses to a bare string, the only spelling the schema
     accepts for it (`minItems: 2` on the array form)."""
     state = valid_state()
-    state["weekly_schedule"]["preferred_sessions"] = [
-        {"day": "Wednesday", "type": ["quality"]}
-    ]
+    state["weekly_schedule"] = {
+        "grid": grid(Wednesday_morning=cell(type=["quality"]))
+    }
     result = run_assemble(page, state)
     assert result["errors"] == []
     assert_schema_valid(result["intake"])
@@ -248,7 +336,7 @@ def test_no_ticked_type_omits_the_field(page: Page) -> None:
     """No type ticked emits no `type` at all rather than an empty array, so
     the schema's `required` reports it as a missing field."""
     state = valid_state()
-    state["weekly_schedule"]["preferred_sessions"] = [{"day": "Wednesday", "type": []}]
+    state["weekly_schedule"] = {"grid": grid(Wednesday_morning=cell(type=[]))}
     result = run_assemble(page, state)
     assert result["errors"] == []
     session = result["intake"]["weekly_schedule"]["preferred_sessions"][0]
@@ -256,33 +344,33 @@ def test_no_ticked_type_omits_the_field(page: Page) -> None:
 
 
 def test_flexible_type_including_long_blocks(page: Page) -> None:
-    """A day offering the long run among several types blocks handoff - the
+    """A cell offering the long run among several types blocks handoff - the
     long-run pin is resolved once per plan (FLEXIBLE_TYPE_INCLUDES_LONG)."""
     state = valid_state()
-    state["weekly_schedule"]["preferred_sessions"] = [
-        {"day": "Saturday", "type": ["long", "easy"]}
-    ]
+    state["weekly_schedule"] = {
+        "grid": grid(Saturday_morning=cell(type=["long", "easy"]))
+    }
     result = run_assemble(page, state)
     assert any("long run" in e.lower() and "Saturday" in e for e in result["errors"])
 
 
 def test_flexible_type_mixing_modes_blocks(page: Page) -> None:
-    """A day mixing running and non-running types blocks handoff - rest-day
+    """A cell mixing running and non-running types blocks handoff - rest-day
     placement needs a definite answer (FLEXIBLE_TYPE_MIXES_MODES)."""
     state = valid_state()
-    state["weekly_schedule"]["preferred_sessions"] = [
-        {"day": "Wednesday", "type": ["easy", "strength"]}
-    ]
+    state["weekly_schedule"] = {
+        "grid": grid(Wednesday_morning=cell(type=["easy", "strength"]))
+    }
     result = run_assemble(page, state)
     assert any("non-running" in e and "Wednesday" in e for e in result["errors"])
 
 
 def test_flexible_all_non_running_type_passes(page: Page) -> None:
-    """A day offering only non-running types is a well-formed flexible set."""
+    """A cell offering only non-running types is a well-formed flexible set."""
     state = valid_state()
-    state["weekly_schedule"]["preferred_sessions"] = [
-        {"day": "Wednesday", "type": ["strength", "cross_training"]}
-    ]
+    state["weekly_schedule"] = {
+        "grid": grid(Wednesday_morning=cell(type=["strength", "cross_training"]))
+    }
     result = run_assemble(page, state)
     assert result["errors"] == []
     assert_schema_valid(result["intake"])
@@ -292,9 +380,13 @@ def test_flexible_type_skipping_tailoring_blocks(page: Page) -> None:
     """Skipping tailoring on a set with a non-skip-tailorable type blocks
     handoff (FLEXIBLE_SKIP_TAILORING_UNSUPPORTED)."""
     state = valid_state()
-    state["weekly_schedule"]["preferred_sessions"] = [
-        {"day": "Wednesday", "type": ["easy", "quality"], "skip_tailoring": True}
-    ]
+    state["weekly_schedule"] = {
+        "grid": grid(
+            Wednesday_morning=cell(
+                type=["easy", "quality"], skip_tailoring=True
+            )
+        )
+    }
     result = run_assemble(page, state)
     assert any("skips tailoring" in e and "Wednesday" in e for e in result["errors"])
 
@@ -303,13 +395,13 @@ def test_uniformly_skip_tailorable_flexible_type_passes(page: Page) -> None:
     """Skipping tailoring is allowed when every offered type is one whose
     detail a coach can own."""
     state = valid_state()
-    state["weekly_schedule"]["preferred_sessions"] = [
-        {
-            "day": "Wednesday",
-            "type": ["strength", "cross_training"],
-            "skip_tailoring": True,
-        }
-    ]
+    state["weekly_schedule"] = {
+        "grid": grid(
+            Wednesday_morning=cell(
+                type=["strength", "cross_training"], skip_tailoring=True
+            )
+        )
+    }
     result = run_assemble(page, state)
     assert result["errors"] == []
     assert_schema_valid(result["intake"])
@@ -317,28 +409,39 @@ def test_uniformly_skip_tailorable_flexible_type_passes(page: Page) -> None:
     assert session["tailored"] is False
 
 
-def test_preferred_session_on_unavailable_day_blocks(page: Page) -> None:
-    """A weekly session on a fully-unticked day blocks handoff."""
+def test_other_event_flexible_type_including_long_blocks(page: Page) -> None:
+    """The flexible-type rules apply to other_events too (task 10.6, ADR
+    039): an other event offering the long run among several types blocks
+    handoff the same way a weekly session does."""
     state = valid_state()
-    state["weekly_schedule"]["availability"] = {
-        "Tuesday": {"morning": False, "evening": False}
-    }
-    state["weekly_schedule"]["preferred_sessions"] = [
-        {"day": "Tuesday", "type": "quality", "description": "tempo"}
+    state["other_events"] = [
+        {"date": "2026-08-16", "type": ["long", "easy"], "description": "Charity fun run"}
     ]
     result = run_assemble(page, state)
-    assert any("preferred session" in e.lower() for e in result["errors"])
+    assert any("long run" in e.lower() for e in result["errors"])
+
+
+def test_other_event_flexible_type_mixing_modes_blocks(page: Page) -> None:
+    """An other event mixing running and non-running types blocks handoff
+    (task 10.6) - same FLEXIBLE_TYPE_MIXES_MODES rule as weekly sessions."""
+    state = valid_state()
+    state["other_events"] = [
+        {"date": "2026-08-16", "type": ["easy", "strength"], "description": "Charity fun run"}
+    ]
+    result = run_assemble(page, state)
+    assert any("non-running" in e for e in result["errors"])
 
 
 def test_preferred_session_off_unavailable_day_passes(page: Page) -> None:
     """A weekly session scheduled on an available day is allowed."""
     state = valid_state()
-    state["weekly_schedule"]["availability"] = {
-        "Tuesday": {"morning": False, "evening": False}
+    state["weekly_schedule"] = {
+        "grid": grid(
+            Tuesday_morning=cell("unavailable"),
+            Tuesday_evening=cell("unavailable"),
+            Wednesday_morning=cell(type=["quality"], description="intervals"),
+        )
     }
-    state["weekly_schedule"]["preferred_sessions"] = [
-        {"day": "Wednesday", "type": "quality", "description": "intervals"}
-    ]
     result = run_assemble(page, state)
     assert result["errors"] == []
     assert_schema_valid(result["intake"])
@@ -348,15 +451,16 @@ def test_preferred_session_distance_max_below_min_blocks(page: Page) -> None:
     """A weekly session with a maximum distance below its minimum blocks
     with a friendly message naming the row (mirrors DISTANCE_RANGE_INVALID)."""
     state = valid_state()
-    state["weekly_schedule"]["preferred_sessions"] = [
-        {
-            "day": "Wednesday",
-            "type": "quality",
-            "description": "parkrun",
-            "distance_min": 10,
-            "distance_max": 5,
-        }
-    ]
+    state["weekly_schedule"] = {
+        "grid": grid(
+            Wednesday_morning=cell(
+                type=["quality"],
+                description="parkrun",
+                distance_min=10,
+                distance_max=5,
+            )
+        )
+    }
     result = run_assemble(page, state)
     assert any("parkrun" in e and "distance" in e.lower() for e in result["errors"])
 
@@ -364,15 +468,16 @@ def test_preferred_session_distance_max_below_min_blocks(page: Page) -> None:
 def test_preferred_session_distance_range_valid_passes(page: Page) -> None:
     """A weekly session whose maximum distance is >= its minimum is allowed."""
     state = valid_state()
-    state["weekly_schedule"]["preferred_sessions"] = [
-        {
-            "day": "Wednesday",
-            "type": "quality",
-            "description": "parkrun",
-            "distance_min": 5,
-            "distance_max": 5,
-        }
-    ]
+    state["weekly_schedule"] = {
+        "grid": grid(
+            Wednesday_morning=cell(
+                type=["quality"],
+                description="parkrun",
+                distance_min=5,
+                distance_max=5,
+            )
+        )
+    }
     result = run_assemble(page, state)
     assert result["errors"] == []
     assert_schema_valid(result["intake"])
@@ -411,32 +516,213 @@ def test_valid_state_has_no_warnings(page: Page) -> None:
     assert result["warnings"] == []
 
 
-def test_five_unavailable_days_warns_without_blocking(page: Page) -> None:
-    """5+ fully-unticked days guarantee fewer than 3 trainable days - a
-    non-blocking advisory mirroring SCHEDULE_UNDER_CONSTRAINED."""
-    state = valid_state()
-    state["weekly_schedule"]["availability"] = {
-        day: {"morning": False, "evening": False}
-        for day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-    }
-    result = run_assemble(page, state)
-    assert result["errors"] == []
-    assert any("trainable" in w.lower() for w in result["warnings"])
-    assert_schema_valid(result["intake"])
+def _unavailable_grid(day_count: int) -> dict[str, Any]:
+    """A grid with the first `day_count` weekdays fully unticked (both
+    halves), leaving `7 - day_count` weekdays with at least one available
+    half."""
+    return grid(
+        **{
+            f"{day}_{half}": cell("unavailable")
+            for day in DAY_NAMES[:day_count]
+            for half in ["morning", "evening"]
+        }
+    )
 
 
-def test_four_unavailable_days_does_not_warn(page: Page) -> None:
-    """4 fully-unticked days still leaves 3 possibly-trainable days, so no
-    advisory fires - the threshold is 5, not 4."""
+def test_unavailable_days_at_run_day_floor_passes(page: Page) -> None:
+    """Exactly `min_run_days_at_peak` weekdays left with an available half
+    blocks neither on SCHEDULE_BELOW_RUN_DAY_FLOOR nor the older
+    trainable-days warning - the boundary case."""
+    floor = CONSTRAINTS["min_run_days_at_peak"]
     state = valid_state()
-    state["weekly_schedule"]["availability"] = {
-        day: {"morning": False, "evening": False}
-        for day in ["Monday", "Tuesday", "Wednesday", "Thursday"]
-    }
+    state["weekly_schedule"] = {"grid": _unavailable_grid(7 - floor)}
     result = run_assemble(page, state)
     assert result["errors"] == []
     assert result["warnings"] == []
     assert_schema_valid(result["intake"])
+
+
+def test_unavailable_days_below_run_day_floor_blocks(page: Page) -> None:
+    """One weekday short of `min_run_days_at_peak` blocks on
+    SCHEDULE_BELOW_RUN_DAY_FLOOR (task 10.2) - no rest-day placement can
+    raise this upper bound on trainable days. `MIN_TRAINABLE_DAYS` (3) is
+    stricter than most configured floors, so this boundary case trips only
+    the blocking error, not the older warning."""
+    floor = CONSTRAINTS["min_run_days_at_peak"]
+    state = valid_state()
+    state["weekly_schedule"] = {"grid": _unavailable_grid(8 - floor)}
+    result = run_assemble(page, state)
+    assert any("running days" in e.lower() for e in result["errors"])
+
+
+def test_five_unavailable_days_blocks_and_warns(page: Page) -> None:
+    """5+ fully-unavailable days guarantee fewer than 3 trainable days,
+    tripping both SCHEDULE_BELOW_RUN_DAY_FLOOR (blocking) and the older,
+    non-blocking trainable-days advisory mirroring SCHEDULE_UNDER_CONSTRAINED
+    - the two now overlap since `min_run_days_at_peak` (task 10.2) is
+    typically >= `MIN_TRAINABLE_DAYS` (3)."""
+    state = valid_state()
+    state["weekly_schedule"] = {"grid": _unavailable_grid(5)}
+    result = run_assemble(page, state)
+    assert any("running days" in e.lower() for e in result["errors"])
+    assert any("trainable" in w.lower() for w in result["warnings"])
+
+
+def test_plan_window_too_short_for_goal_distance_blocks(page: Page) -> None:
+    """A plan window shorter than base + minimum build + taper for the
+    goal's distance blocks handoff (task 10.1) - `valid_state`'s marathon
+    goal needs far more than the 4 weeks between start_date and date here."""
+    state = valid_state()
+    state["goal"]["date"] = "2026-06-29"
+    result = run_assemble(page, state)
+    assert any(
+        "fewer than the" in e and "marathon goal needs" in e for e in result["errors"]
+    )
+
+
+def test_quality_touchpoints_at_ceiling_passes(page: Page) -> None:
+    """Exactly `max_quality_touchpoints` pinned touchpoint days, spaced
+    apart, does not exceed the ceiling (task 10.3)."""
+    state = valid_state()
+    state["weekly_schedule"] = {
+        "grid": grid(
+            Monday_morning=cell(type=["quality"]),
+            Wednesday_morning=cell(type=["quality"]),
+            Friday_morning=cell(type=["quality"]),
+        )
+    }
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert_schema_valid(result["intake"])
+
+
+def test_quality_touchpoints_exceeding_ceiling_blocks(page: Page) -> None:
+    """More pinned quality/long touchpoint days than the configured ceiling
+    blocks handoff (task 10.3) - the long run counts as a touchpoint in its
+    own right. Days are spaced apart so this trips only the ceiling, not the
+    adjacency rule below."""
+    state = valid_state()
+    state["weekly_schedule"] = {
+        "grid": grid(
+            Monday_morning=cell(type=["quality"]),
+            Wednesday_morning=cell(type=["quality"]),
+            Friday_morning=cell(type=["quality"]),
+            Sunday_evening=cell(type=["long"]),
+        )
+    }
+    result = run_assemble(page, state)
+    assert any("quality touchpoints" in e.lower() for e in result["errors"])
+
+
+def test_adjacent_quality_days_blocks(page: Page) -> None:
+    """Two pinned quality days on consecutive weekdays blocks handoff (task
+    10.3)."""
+    state = valid_state()
+    state["weekly_schedule"] = {
+        "grid": grid(
+            Saturday_morning=cell(type=["quality"]),
+            Sunday_morning=cell(type=["quality"]),
+        )
+    }
+    result = run_assemble(page, state)
+    assert any("adjacent" in e.lower() for e in result["errors"])
+
+
+def test_sunday_monday_quality_days_count_as_adjacent(page: Page) -> None:
+    """Sunday and Monday count as adjacent too, since the weekly template
+    repeats (task 10.3)."""
+    state = valid_state()
+    state["weekly_schedule"] = {
+        "grid": grid(
+            Sunday_morning=cell(type=["quality"]),
+            Monday_morning=cell(type=["quality"]),
+        )
+    }
+    result = run_assemble(page, state)
+    assert any("adjacent" in e.lower() for e in result["errors"])
+
+
+def test_event_on_fully_unavailable_day_warns(page: Page) -> None:
+    """A B race landing on a weekday with no available half warns, without
+    blocking - the event always wins (task 10.4)."""
+    state = valid_state()
+    state["weekly_schedule"] = {
+        "grid": grid(
+            Tuesday_morning=cell("unavailable"), Tuesday_evening=cell("unavailable")
+        )
+    }
+    state["b_races"] = [
+        {
+            "name": "Tune-up 10k",
+            "distance": "10k",
+            "date": "2026-08-18",  # a Tuesday within the plan window
+            "target_time_mode": "finish",
+        }
+    ]
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert any("takes precedence" in w for w in result["warnings"])
+    assert_schema_valid(result["intake"])
+
+
+def test_event_clashing_with_preferred_session_warns(page: Page) -> None:
+    """An other event landing on a weekday carrying a preferred session
+    warns that the event displaces it (task 10.4)."""
+    state = valid_state()
+    state["weekly_schedule"] = {
+        "grid": grid(Wednesday_morning=cell(type=["quality"], description="intervals"))
+    }
+    state["other_events"] = [
+        {
+            "date": "2026-08-19",  # a Wednesday within the plan window
+            "type": "easy",
+            "description": "Charity fun run",
+        }
+    ]
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert any("takes precedence" in w for w in result["warnings"])
+    assert_schema_valid(result["intake"])
+
+
+def test_goal_faster_than_fitness_warns(page: Page) -> None:
+    """A goal target time implying a VDOT well above current fitness warns,
+    without blocking - training paces still follow current fitness, not the
+    goal (task 10.5)."""
+    state = valid_state()
+    state["goal"]["target_time_h"] = 2
+    state["goal"]["target_time_m"] = 30
+    state["goal"]["target_time_s"] = 0
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert any("above your current vdot" in w.lower() for w in result["warnings"])
+    assert_schema_valid(result["intake"])
+
+
+def test_goal_slower_than_fitness_warns(page: Page) -> None:
+    """A goal target time implying a VDOT well below current fitness warns
+    too (task 10.5)."""
+    state = valid_state()
+    state["goal"]["target_time_h"] = 5
+    state["goal"]["target_time_m"] = 30
+    state["goal"]["target_time_s"] = 0
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert any("below your current vdot" in w.lower() for w in result["warnings"])
+    assert_schema_valid(result["intake"])
+
+
+def test_goal_consistency_skipped_for_suggest_mode(page: Page) -> None:
+    """A 'suggest' goal has no specific goal pace to compare and is
+    calibrated from current fitness, so it's consistent by construction -
+    the goal-consistency check is skipped entirely (task 10.5)."""
+    state = valid_state()
+    state["goal"]["target_time_mode"] = "suggest"
+    for key in ("target_time_h", "target_time_m", "target_time_s"):
+        state["goal"].pop(key, None)
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert result["warnings"] == []
 
 
 def test_timestamps_set_at_handoff(page: Page) -> None:
@@ -449,12 +735,67 @@ def test_blank_optional_sections_are_omitted(page: Page) -> None:
     """Optional sections left blank are omitted, not emitted as empty objects."""
     result = run_assemble(page, valid_state())
     intake = result["intake"]
-    for key in ("b_races", "other_events", "notes"):
+    for key in ("b_races", "other_events", "notes", "output"):
         assert key not in intake
 
 
+def test_untouched_grid_omits_weekly_schedule(page: Page) -> None:
+    """A grid with no cell touched (all default 'available') assembles to no
+    `weekly_schedule` key at all - the tri-state grid's "absent = available"
+    contract (task 9.11)."""
+    state = valid_state()
+    del state["weekly_schedule"]
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert_schema_valid(result["intake"])
+    assert "weekly_schedule" not in result["intake"]
+
+
+def test_generic_quality_detail_included(page: Page) -> None:
+    """Picking 'generic' quality detail is carried into `output`."""
+    state = valid_state()
+    state["output"] = {"quality_detail": "generic"}
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert_schema_valid(result["intake"])
+    assert result["intake"]["output"] == {"quality_detail": "generic"}
+
+
+def test_default_quality_detail_omits_output(page: Page) -> None:
+    """The default 'specific' quality detail omits `output` entirely,
+    matching every other section's sparse-by-construction contract."""
+    state = valid_state()
+    state["output"] = {"quality_detail": "specific"}
+    result = run_assemble(page, state)
+    assert "output" not in result["intake"]
+
+
+def test_vdot_computed_from_recent_result(page: Page) -> None:
+    """current_fitness.vdot is computed client-side from recent_result and
+    submitted alongside the runner's own fitness figures. valid.json's half
+    marathon in 1:45:00 is VDOT ~42.63 (rundrafter's compute_vdot)."""
+    result = run_assemble(page, valid_state())
+    assert result["errors"] == []
+    assert_schema_valid(result["intake"])
+    assert result["intake"]["current_fitness"]["vdot"] == pytest.approx(42.63, abs=0.5)
+
+
+def test_vdot_omitted_without_weekly_distance_or_longest_run(page: Page) -> None:
+    """vdot is only submitted when current_fitness already carries both
+    fields the schema requires whenever the section is present at all - a
+    partial current_fitness is already schema-invalid regardless of vdot,
+    so this only asserts vdot doesn't compound the problem."""
+    state = valid_state()
+    del state["current_fitness"]["weekly_distance"]
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert "vdot" not in result["intake"]["current_fitness"]
+
+
 def test_golden_fixture_reproduces_intake_example(page: Page) -> None:
-    """A fully filled form-state reproduces the vendored golden example."""
+    """A fully filled form-state reproduces the vendored golden example,
+    modulo preferred_sessions order and time_of_day (see
+    normalize_preferred_sessions)."""
     example = json.loads((REPO_ROOT / "schema" / "intake-example.json").read_text())
     # notes.other is blank in the vendored example; our pruning rule omits an
     # empty notes section entirely rather than emitting {"other": ""}, so the
@@ -466,7 +807,9 @@ def test_golden_fixture_reproduces_intake_example(page: Page) -> None:
         page, load_fixture("golden.json"), now=example["meta"]["submitted_at"]
     )
     assert result["errors"] == []
-    assert result["intake"] == example
+    assert normalize_preferred_sessions(result["intake"]) == normalize_preferred_sessions(
+        example
+    )
     assert_schema_valid(result["intake"])
 
 
@@ -493,10 +836,10 @@ def test_beginner_fixture_assembles_and_validates(page: Page) -> None:
 
 
 def test_flexible_fixture_assembles_and_validates(page: Page) -> None:
-    """A flexible form-state (a running day offering easy-or-quality, a
-    non-running day offering strength-or-cross-training, and a single-ticked
-    long run) assembles cleanly, validates, and keeps one spelling per
-    meaning: array only where the runner offered a real choice."""
+    """A flexible form-state (a running cell offering easy-or-quality, a
+    non-running cell offering strength-or-cross-training, and a
+    single-ticked long run) assembles cleanly, validates, and keeps one
+    spelling per meaning: array only where the runner offered a real choice."""
     result = run_assemble(page, load_fixture("flexible.json"))
     assert result["errors"] == []
     assert_schema_valid(result["intake"])
@@ -524,23 +867,32 @@ def test_blank_current_fitness_omits_section(page: Page) -> None:
     assert "current_fitness" not in result["intake"]
 
 
-def test_dom_smoke_fill_download_validates(page: Page) -> None:
-    """Filling the real form and submitting downloads a schema-valid intake.json."""
+def fill_required_fields(page: Page) -> None:
+    """Fill every field the form needs to reach a download, nothing more."""
     page.fill("#runner-name", "Alex Smith")
     page.select_option("#runner-experience", "experienced")
 
     page.fill("#goal-race", "Melbourne Marathon")
     page.select_option("#goal-distance", "marathon")
     page.fill("#goal-date", "2026-10-11")
-    page.fill("#goal-target-time", "3:45:00")
+    page.fill("#goal-target-time-h", "3")
+    page.fill("#goal-target-time-m", "45")
+    page.fill("#goal-target-time-s", "0")
     page.fill("#goal-start-date", "2026-06-01")
 
     page.select_option("#recent-result-distance", "half")
-    page.fill("#recent-result-time", "1:45:00")
+    page.fill("#recent-result-time-h", "1")
+    page.fill("#recent-result-time-m", "45")
+    page.fill("#recent-result-time-s", "0")
     page.fill("#recent-result-date", "2026-05-01")
 
     page.fill("#fitness-weekly-distance", "40")
     page.fill("#fitness-longest-run", "18")
+
+
+def test_dom_smoke_fill_download_validates(page: Page) -> None:
+    """Filling the real form and submitting downloads a schema-valid intake.json."""
+    fill_required_fields(page)
 
     with page.expect_download() as download_info:
         page.click('button[type="submit"]')
@@ -559,7 +911,9 @@ def test_dom_smoke_blank_recent_result_omits_section(page: Page) -> None:
     page.fill("#goal-race", "Melbourne Marathon")
     page.select_option("#goal-distance", "marathon")
     page.fill("#goal-date", "2026-10-11")
-    page.fill("#goal-target-time", "3:45:00")
+    page.fill("#goal-target-time-h", "3")
+    page.fill("#goal-target-time-m", "45")
+    page.fill("#goal-target-time-s", "0")
     page.fill("#goal-start-date", "2026-06-01")
 
     page.fill("#fitness-weekly-distance", "40")
@@ -594,34 +948,16 @@ def test_dom_smoke_blank_current_fitness_omits_section(page: Page) -> None:
     assert_schema_valid(downloaded)
 
 
-def fill_required_fields(page: Page) -> None:
-    """Fill every field the form needs to reach a download, nothing more."""
-    page.fill("#runner-name", "Alex Smith")
-    page.select_option("#runner-experience", "experienced")
-
-    page.fill("#goal-race", "Melbourne Marathon")
-    page.select_option("#goal-distance", "marathon")
-    page.fill("#goal-date", "2026-10-11")
-    page.fill("#goal-target-time", "3:45:00")
-    page.fill("#goal-start-date", "2026-06-01")
-
-    page.select_option("#recent-result-distance", "half")
-    page.fill("#recent-result-time", "1:45:00")
-    page.fill("#recent-result-date", "2026-05-01")
-
-    page.fill("#fitness-weekly-distance", "40")
-    page.fill("#fitness-longest-run", "18")
-
-
 def test_dom_smoke_flexible_types_download_as_array(page: Page) -> None:
-    """Ticking several types on one weekly-session row downloads an intake
-    whose `type` is the array of exactly those types."""
+    """Ticking several types on one grid cell downloads an intake whose
+    `type` is the array of exactly those types, tagged with the cell's own
+    time_of_day."""
     fill_required_fields(page)
 
-    page.click("#add-weekly-session")
-    page.select_option('[name="weekly_schedule.preferred_sessions.0.day"]', "Wednesday")
-    page.check('[name="weekly_schedule.preferred_sessions.0.type"][value="easy"]')
-    page.check('[name="weekly_schedule.preferred_sessions.0.type"][value="quality"]')
+    prefix = "weekly_schedule.grid.Wednesday.morning"
+    page.check(f'[name="{prefix}.state"][value="session"]')
+    page.check(f'[name="{prefix}.type"][value="easy"]')
+    page.check(f'[name="{prefix}.type"][value="quality"]')
 
     with page.expect_download() as download_info:
         page.click('button[type="submit"]')
@@ -629,18 +965,127 @@ def test_dom_smoke_flexible_types_download_as_array(page: Page) -> None:
     downloaded = json.loads(Path(download_info.value.path()).read_text())
     session = downloaded["weekly_schedule"]["preferred_sessions"][0]
     assert session["type"] == ["easy", "quality"]
+    assert session["time_of_day"] == "morning"
     assert_schema_valid(downloaded)
 
 
-def test_dom_skip_tailoring_hidden_unless_every_type_supports_it(page: Page) -> None:
-    """The skip-tailoring tickbox appears only while every ticked type is one
-    whose detail a coach can own, and clears itself when it hides."""
-    page.click("#add-weekly-session")
-    label = page.locator("[data-skip-tailoring-for]")
-    checkbox = page.locator(
-        '[name="weekly_schedule.preferred_sessions.0.skip_tailoring"]'
+def test_dom_smoke_unavailable_cell_downloads_as_availability_override(page: Page) -> None:
+    """Marking a tri-state grid cell 'Unavailable' downloads an intake with
+    that half unticked in `weekly_schedule.availability` - the other tri-state
+    (available/session) is exercised by the flexible-types test above."""
+    fill_required_fields(page)
+
+    prefix = "weekly_schedule.grid.Tuesday.morning"
+    page.check(f'[name="{prefix}.state"][value="unavailable"]')
+
+    with page.expect_download() as download_info:
+        page.click('button[type="submit"]')
+
+    downloaded = json.loads(Path(download_info.value.path()).read_text())
+    assert downloaded["weekly_schedule"]["availability"]["Tuesday"] == {"morning": False}
+    assert_schema_valid(downloaded)
+
+
+def test_dom_smoke_structured_duration_composes_time_strings(page: Page) -> None:
+    """The structured h/m/s duration controls compose into the schema's
+    `H:MM:SS`/`M:SS` strings for goal.target_time and recent_result.time -
+    `fill_required_fields` drives these controls; this asserts the composed
+    values rather than just schema validity."""
+    fill_required_fields(page)
+
+    with page.expect_download() as download_info:
+        page.click('button[type="submit"]')
+
+    downloaded = json.loads(Path(download_info.value.path()).read_text())
+    assert downloaded["goal"]["target_time"] == "3:45:00"
+    assert downloaded["recent_result"]["time"] == "1:45:00"
+    assert_schema_valid(downloaded)
+
+
+def test_dom_smoke_b_race_structured_duration_composes(page: Page) -> None:
+    """A B race's structured h/m/s duration control composes into
+    `target_time` the same way the goal's does."""
+    fill_required_fields(page)
+
+    page.click("#add-b-race")
+    page.fill('[name="b_races.0.name"]', "Tune-up 10k")
+    page.select_option('[name="b_races.0.distance"]', "10k")
+    page.fill('[name="b_races.0.date"]', "2026-08-16")
+    page.check('[name="b_races.0.target_time_mode"][value="specific"]')
+    page.fill('[name="b_races.0.target_time_m"]', "45")
+    page.fill('[name="b_races.0.target_time_s"]', "0")
+
+    with page.expect_download() as download_info:
+        page.click('button[type="submit"]')
+
+    downloaded = json.loads(Path(download_info.value.path()).read_text())
+    assert downloaded["b_races"][0]["target_time"] == "45:00"
+    assert_schema_valid(downloaded)
+
+
+def test_dom_smoke_other_event_multi_type_downloads_as_array(page: Page) -> None:
+    """Ticking several types on an other-events row downloads an intake
+    whose `type` is the array of exactly those types. Uses easy+quality, not
+    easy+long: FLEXIBLE_TYPE_INCLUDES_LONG now applies to other_events too
+    (task 10.6), so a long-run entry can't be one option among several."""
+    fill_required_fields(page)
+
+    page.click("#add-other-event")
+    page.fill('[name="other_events.0.date"]', "2026-08-16")
+    page.check('[name="other_events.0.type"][value="easy"]')
+    page.check('[name="other_events.0.type"][value="quality"]')
+
+    with page.expect_download() as download_info:
+        page.click('button[type="submit"]')
+
+    downloaded = json.loads(Path(download_info.value.path()).read_text())
+    event = downloaded["other_events"][0]
+    assert event["type"] == ["easy", "quality"]
+    assert_schema_valid(downloaded)
+
+
+def test_dom_smoke_generic_quality_detail_downloads(page: Page) -> None:
+    """Selecting the generic quality-detail radio downloads an intake
+    carrying `output.quality_detail: "generic"`."""
+    fill_required_fields(page)
+    page.check('input[name="output.quality_detail"][value="generic"]')
+
+    with page.expect_download() as download_info:
+        page.click('button[type="submit"]')
+
+    downloaded = json.loads(Path(download_info.value.path()).read_text())
+    assert downloaded["output"] == {"quality_detail": "generic"}
+    assert_schema_valid(downloaded)
+
+
+def test_dom_grid_cell_editor_hidden_until_session_selected(page: Page) -> None:
+    """A grid cell's session editor is hidden by default (state:
+    available) and reveals only once 'Has a session' is selected."""
+    prefix = "weekly_schedule.grid.Wednesday.morning"
+    editor = page.locator(
+        f'.grid-cell:has([name="{prefix}.state"]) .cell-session-editor'
     )
-    type_box = '[name="weekly_schedule.preferred_sessions.0.type"]'
+    assert editor.is_hidden()
+
+    page.check(f'[name="{prefix}.state"][value="session"]')
+    assert editor.is_visible()
+
+    page.check(f'[name="{prefix}.state"][value="unavailable"]')
+    assert editor.is_hidden()
+
+
+def test_dom_skip_tailoring_hidden_unless_every_type_supports_it(page: Page) -> None:
+    """A grid cell's skip-tailoring tickbox appears only while every ticked
+    type is one whose detail a coach can own, and clears itself when it
+    hides."""
+    prefix = "weekly_schedule.grid.Wednesday.morning"
+    page.check(f'[name="{prefix}.state"][value="session"]')
+
+    label = page.locator(
+        f'label[data-skip-tailoring-for]:has([name="{prefix}.skip_tailoring"])'
+    )
+    checkbox = page.locator(f'[name="{prefix}.skip_tailoring"]')
+    type_box = f'[name="{prefix}.type"]'
 
     assert label.is_hidden()
 
@@ -665,11 +1110,15 @@ def test_empty_required_field_shows_inline_error(page: Page) -> None:
 
     page.select_option("#goal-distance", "marathon")
     page.fill("#goal-date", "2026-10-11")
-    page.fill("#goal-target-time", "3:45:00")
+    page.fill("#goal-target-time-h", "3")
+    page.fill("#goal-target-time-m", "45")
+    page.fill("#goal-target-time-s", "0")
     page.fill("#goal-start-date", "2026-06-01")
 
     page.select_option("#recent-result-distance", "half")
-    page.fill("#recent-result-time", "1:45:00")
+    page.fill("#recent-result-time-h", "1")
+    page.fill("#recent-result-time-m", "45")
+    page.fill("#recent-result-time-s", "0")
     page.fill("#recent-result-date", "2026-05-01")
 
     page.fill("#fitness-weekly-distance", "40")

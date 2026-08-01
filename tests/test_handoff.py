@@ -88,11 +88,15 @@ def test_success_screen_after_valid_submission(page: Page) -> None:
     page.fill("#goal-race", "Melbourne Marathon")
     page.select_option("#goal-distance", "marathon")
     page.fill("#goal-date", "2026-10-11")
-    page.fill("#goal-target-time", "3:45:00")
+    page.fill("#goal-target-time-h", "3")
+    page.fill("#goal-target-time-m", "45")
+    page.fill("#goal-target-time-s", "0")
     page.fill("#goal-start-date", "2026-06-01")
 
     page.select_option("#recent-result-distance", "half")
-    page.fill("#recent-result-time", "1:45:00")
+    page.fill("#recent-result-time-h", "1")
+    page.fill("#recent-result-time-m", "45")
+    page.fill("#recent-result-time-s", "0")
     page.fill("#recent-result-date", "2026-05-01")
 
     page.fill("#fitness-weekly-distance", "40")
@@ -119,17 +123,16 @@ def test_success_screen_after_valid_submission(page: Page) -> None:
 
 
 def test_race_not_offered_as_a_session_type(page: Page) -> None:
-    """Race is a goal/B-race concept, not a weekly-template or other-event
-    type - neither repeating-row template should offer it (build plan issue
-    4)."""
-    page.click("#add-weekly-session")
-    weekly_type = page.locator(
-        '#weekly-session-list select[name$=".type"]'
-    ).first
-    assert weekly_type.locator('option[value="race"]').count() == 0
+    """Race is a goal/B-race concept, not a weekly-schedule or other-event
+    type - neither the grid cell editor nor the other-event template should
+    offer it (build plan issue 4)."""
+    grid_race_option = page.locator(
+        '#availability-grid input[type="checkbox"][name$=".type"][value="race"]'
+    )
+    assert grid_race_option.count() == 0
 
     page.click("#add-other-event")
-    other_event_type = page.locator(
-        '#other-events-list select[name$=".type"]'
-    ).first
-    assert other_event_type.locator('option[value="race"]').count() == 0
+    other_event_race_option = page.locator(
+        '#other-events-list input[type="checkbox"][name$=".type"][value="race"]'
+    )
+    assert other_event_race_option.count() == 0

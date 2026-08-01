@@ -5,30 +5,39 @@
     "race": "Melbourne Marathon",
     "distance": "marathon",
     "date": "2026-10-11",
-    "target_time": "3:45:00",
+    "target_time_mode": "specific",
+    "target_time_h": 3,
+    "target_time_m": 45,
+    "target_time_s": 0,
     "start_date": "2026-06-01"
   },
   "recent_result": {
     "distance": "half",
-    "time": "1:45:00",
+    "time_h": 1,
+    "time_m": 45,
+    "time_s": 0,
     "date": "2026-05-01"
   },
   "current_fitness": { "weekly_distance": 40, "longest_run": 18 },
   "weekly_schedule": {
-    "preferred_sessions": [
-      { "day": "Sunday", "type": ["long"] },
-      {
-        "day": "Wednesday",
-        "type": ["easy", "quality"],
-        "description": "Club night - session or a jog, depending on the week"
+    "grid": {
+      "Sunday": { "evening": { "state": "session", "type": ["long"] } },
+      "Wednesday": {
+        "morning": {
+          "state": "session",
+          "type": ["easy", "quality"],
+          "description": "Club night - session or a jog, depending on the week"
+        }
       },
-      {
-        "day": "Friday",
-        "type": ["strength", "cross_training"],
-        "description": "Gym or the pool",
-        "distance_max": 0,
-        "skip_tailoring": true
+      "Friday": {
+        "evening": {
+          "state": "session",
+          "type": ["strength", "cross_training"],
+          "description": "Gym or the pool",
+          "distance_max": 0,
+          "skip_tailoring": true
+        }
       }
-    ]
+    }
   }
 }

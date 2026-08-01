@@ -2,6 +2,19 @@ import { assemble } from "./assemble.js";
 import { downloadIntake, buildMailtoUrl, RETURN_EMAIL } from "./handoff.js";
 import schema from "./schema.js";
 
+const DAY_NAMES = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
+
+const HALVES = ["morning", "evening"];
+const HALF_LABELS = { morning: "Morning", evening: "Evening" };
+
 function setPath(obj, path, value) {
   const parts = path.split(".");
   let cur = obj;
@@ -103,20 +116,20 @@ function setupRepeatingGroup(
   updateAddButton();
 }
 
-// Shows a repeating row's skip-tailoring tickbox only while every type the
-// row offers is one whose detail a coach can own - the types listed in
-// `data-skip-tailoring-for`, mirroring validate.py's SKIP_TAILORABLE_TYPES
-// and its FLEXIBLE_SKIP_TAILORING_UNSUPPORTED rule for multi-type days. The
-// tick is cleared whenever it hides, so a stale one can't reach the
-// assembled intake.
-function setupSkipTailoring(row) {
-  const label = row.querySelector("[data-skip-tailoring-for]");
+// Shows a repeating row's (or grid cell's) skip-tailoring tickbox only
+// while every type it offers is one whose detail a coach can own - the
+// types listed in `data-skip-tailoring-for`, mirroring validate.py's
+// SKIP_TAILORABLE_TYPES and its FLEXIBLE_SKIP_TAILORING_UNSUPPORTED rule
+// for multi-type days. The tick is cleared whenever it hides, so a stale
+// one can't reach the assembled intake.
+function setupSkipTailoring(container) {
+  const label = container.querySelector("[data-skip-tailoring-for]");
   if (!label) return;
 
   const allowed = new Set(label.dataset.skipTailoringFor.split(/\s+/));
   const checkbox = label.querySelector('input[type="checkbox"]');
   const typeBoxes = Array.from(
-    row.querySelectorAll('input[type="checkbox"][name$=".type"]'),
+    container.querySelectorAll('input[type="checkbox"][name$=".type"]'),
   );
 
   function update() {
@@ -129,6 +142,59 @@ function setupSkipTailoring(row) {
 
   typeBoxes.forEach((box) => box.addEventListener("change", update));
   update();
+}
+
+// Builds the fixed 7-day x 2-half tri-state availability grid from the
+// grid-day/grid-cell templates: each cell's inputs are named
+// `weekly_schedule.grid.<Day>.<half>.<field>` via their `data-field`
+// attribute, so the generic gatherFormState above needs no grid-specific
+// logic - see rundrafter's design.md, "The availability grid absorbs the
+// session template as a tri-state cell".
+function buildAvailabilityGrid() {
+  const container = document.getElementById("availability-grid");
+  const dayTemplate = document.getElementById("grid-day-template");
+  const cellTemplate = document.getElementById("grid-cell-template");
+  if (!container || !dayTemplate || !cellTemplate) return [];
+
+  const cells = [];
+  for (const day of DAY_NAMES) {
+    const dayFragment = dayTemplate.content.cloneNode(true);
+    const dayFieldset = dayFragment.querySelector(".grid-day");
+    dayFieldset.querySelector(".grid-day-legend").textContent = day;
+    const halvesContainer = dayFragment.querySelector(".grid-halves");
+
+    for (const half of HALVES) {
+      const cellFragment = cellTemplate.content.cloneNode(true);
+      const cell = cellFragment.querySelector(".grid-cell");
+      const prefix = `weekly_schedule.grid.${day}.${half}`;
+
+      cell.querySelector(".grid-cell-legend").textContent = HALF_LABELS[half];
+      cell.querySelectorAll("[data-field]").forEach((el) => {
+        el.name = `${prefix}.${el.dataset.field}`;
+      });
+
+      halvesContainer.appendChild(cell);
+      cells.push(cell);
+    }
+    container.appendChild(dayFragment);
+  }
+  return cells;
+}
+
+// Reveals a grid cell's session editor only while "Has a session" is
+// selected, and wires that cell's own skip-tailoring visibility.
+function setupGridCell(cell) {
+  const editor = cell.querySelector(".cell-session-editor");
+  const stateRadios = Array.from(cell.querySelectorAll('[data-field="state"]'));
+
+  function update() {
+    const checked = stateRadios.find((radio) => radio.checked);
+    editor.hidden = checked?.value !== "session";
+  }
+
+  stateRadios.forEach((radio) => radio.addEventListener("change", update));
+  update();
+  setupSkipTailoring(cell);
 }
 
 function setupUnitLabels(form) {
@@ -289,18 +355,10 @@ function handleSubmit(event) {
 const form = document.getElementById("intake-form");
 if (form) {
   form.addEventListener("submit", handleSubmit);
+  const gridCells = buildAvailabilityGrid();
+  gridCells.forEach(setupGridCell);
   const updateUnitLabels = setupUnitLabels(form);
-  setupRepeatingGroup(
-    "weekly-session-list",
-    "weekly-session-template",
-    "add-weekly-session",
-    {
-      onRowAdded: (row) => {
-        updateUnitLabels();
-        setupSkipTailoring(row);
-      },
-    },
-  );
+  updateUnitLabels();
   setupRepeatingGroup("b-races-list", "b-race-template", "add-b-race", {
     maxRows: 3,
   });

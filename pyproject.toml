@@ -10,4 +10,5 @@ dev = [
     "jsonschema>=4.26,<5",
     "playwright>=1.61,<2",
     "pytest>=9.1,<10",
+    "pyyaml>=6.0,<7",
 ]

@@ -46,7 +46,7 @@ export default {
       "properties": {
         "schema_version": {
           "type": "string",
-          "const": "1"
+          "const": "2"
         },
         "submitted_at": {
           "type": "string"
@@ -165,6 +165,11 @@ export default {
         "recent_peak_weekly": {
           "type": "number",
           "exclusiveMinimum": 0
+        },
+        "vdot": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Computed by the form from recent_result. Authoritative for stage 2; stage 1 recomputes it from recent_result and rejects a mismatch beyond tolerance."
         }
       }
     },
@@ -251,6 +256,13 @@ export default {
               "tailored": {
                 "type": "boolean",
                 "default": true
+              },
+              "time_of_day": {
+                "type": "string",
+                "enum": [
+                  "morning",
+                  "evening"
+                ]
               }
             }
           }
@@ -304,7 +316,9 @@ export default {
             "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
           },
           "target_time": {
-            "type": "string"
+            "description": "No 'suggest' sentinel here - calibration projects a target only for the goal, not a B race.",
+            "type": "string",
+            "pattern": "^([0-9]+:[0-5][0-9]:[0-5][0-9]|[0-9]+:[0-5][0-9]|finish)$"
           }
         }
       }
@@ -324,7 +338,20 @@ export default {
             "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
           },
           "type": {
-            "$ref": "#/$defs/broad_session_type"
+            "description": "One broad type, or two or more distinct types meaning the runner would accept any of these for this event - chosen once, for its single date.",
+            "oneOf": [
+              {
+                "$ref": "#/$defs/broad_session_type"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/broad_session_type"
+                },
+                "minItems": 2,
+                "uniqueItems": true
+              }
+            ]
           },
           "description": {
             "type": "string"
@@ -346,6 +373,21 @@ export default {
       "properties": {
         "other": {
           "type": "string"
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "quality_detail": {
+          "description": "Whether quality sessions carry prescribed pace/workout detail ('specific', the default) or only type, description and distance ('generic'). Applies to every quality session, not just weekly-template entries.",
+          "type": "string",
+          "enum": [
+            "specific",
+            "generic"
+          ],
+          "default": "specific"
         }
       }
     }
