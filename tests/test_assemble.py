@@ -300,6 +300,72 @@ def test_multiple_long_entries_blocks(page: Page) -> None:
     )
 
 
+def test_two_session_cells_on_one_day_block(page: Page) -> None:
+    """Both halves of one weekday carrying a session blocks handoff
+    (MULTIPLE_SESSIONS_ON_DAY).
+
+    A day carries one session. Two entries on it are resolved
+    inconsistently downstream - the expander takes the first, the
+    resolver's time-of-day map the last - so an accepted pair schedules
+    one entry's session in the other's half and drops the second.
+    """
+    state = valid_state()
+    state["weekly_schedule"] = {
+        "grid": grid(
+            Tuesday_morning=cell(type=["quality"], description="club intervals"),
+            Tuesday_evening=cell(type=["easy"], description="commute run"),
+        )
+    }
+    result = run_assemble(page, state)
+    assert any(
+        "Tuesday" in e and "at most one session" in e for e in result["errors"]
+    ), result["errors"]
+
+
+def test_sessions_on_different_days_pass(page: Page) -> None:
+    """The same two sessions on distinct weekdays are unaffected - the rule
+    is about one day carrying two, not about how many are pinned."""
+    state = valid_state()
+    state["weekly_schedule"] = {
+        "grid": grid(
+            Tuesday_morning=cell(type=["quality"], description="club intervals"),
+            Thursday_evening=cell(type=["easy"], description="commute run"),
+        )
+    }
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+
+
+def test_session_cell_with_no_type_blocks_naming_the_cell(page: Page) -> None:
+    """A cell switched to "Has a session" with no type ticked blocks handoff
+    with a message naming the day and half.
+
+    Without this rule the entry still fails, but only at the Ajv pass and
+    against `weekly_schedule.preferred_sessions.0.type` - an assembled-array
+    path no input on the page carries, so it renders summary-only and names
+    a field the runner cannot find.
+    """
+    state = valid_state()
+    state["weekly_schedule"] = {"grid": grid(Wednesday_evening=cell(type=[]))}
+    result = run_assemble(page, state)
+    assert any(
+        "Wednesday" in e and "evening" in e and "no session type" in e
+        for e in result["errors"]
+    ), result["errors"]
+
+
+def test_session_cell_with_no_type_is_caught_before_ajv(page: Page) -> None:
+    """The cell-naming error is the *only* thing the runner is shown - it is
+    raised as a cross-field error, which short-circuits before the schema
+    pass, so the array-index message never reaches them."""
+    state = valid_state()
+    state["weekly_schedule"] = {"grid": grid(Wednesday_evening=cell(type=[]))}
+    result = run_assemble(page, state)
+    assert not any("preferred_sessions" in e for e in result["errors"]), result[
+        "errors"
+    ]
+
+
 def test_flexible_type_assembles_as_array(page: Page) -> None:
     """A cell offering several types keeps the array form through assembly
     and validates against the vendored schema."""
@@ -333,12 +399,17 @@ def test_single_ticked_type_collapses_to_string(page: Page) -> None:
 
 
 def test_no_ticked_type_omits_the_field(page: Page) -> None:
-    """No type ticked emits no `type` at all rather than an empty array, so
-    the schema's `required` reports it as a missing field."""
+    """No type ticked emits no `type` at all rather than an empty array.
+
+    This is about assembly, not about who reports the omission: `omitEmpty`
+    must drop the empty array so the field is genuinely absent rather than
+    present-and-empty. Handoff is blocked either way - by
+    `validateSessionTypePresent` (see the two tests below), which supersedes
+    the schema's `required` this used to rely on.
+    """
     state = valid_state()
     state["weekly_schedule"] = {"grid": grid(Wednesday_morning=cell(type=[]))}
     result = run_assemble(page, state)
-    assert result["errors"] == []
     session = result["intake"]["weekly_schedule"]["preferred_sessions"][0]
     assert "type" not in session
 
@@ -967,6 +1038,29 @@ def test_dom_smoke_flexible_types_download_as_array(page: Page) -> None:
     assert session["type"] == ["easy", "quality"]
     assert session["time_of_day"] == "morning"
     assert_schema_valid(downloaded)
+
+
+def test_dom_smoke_two_sessions_on_one_day_are_rejected(page: Page) -> None:
+    """Driving the real grid: putting a session in both halves of one day is
+    reported against the page and no file is downloaded.
+
+    Worth a DOM test rather than only a module test - the grid's per-half
+    "Has a session" radios are what make this state easy to reach, so the
+    rule has to hold against the shipped controls, not just assemble.js.
+    """
+    fill_required_fields(page)
+
+    for half, session_type in (("morning", "quality"), ("evening", "easy")):
+        prefix = f"weekly_schedule.grid.Tuesday.{half}"
+        page.check(f'[name="{prefix}.state"][value="session"]')
+        page.check(f'[name="{prefix}.type"][value="{session_type}"]')
+
+    page.click('button[type="submit"]')
+
+    errors = page.locator("#form-errors")
+    assert errors.is_visible()
+    assert "at most one session" in errors.inner_text()
+    assert page.locator("#success-screen").is_hidden()
 
 
 def test_dom_smoke_unavailable_cell_downloads_as_availability_override(page: Page) -> None:

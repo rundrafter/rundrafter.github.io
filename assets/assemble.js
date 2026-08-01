@@ -414,6 +414,9 @@ function validateCrossField(formState) {
     );
   }
 
+  validateSessionTypePresent(schedule.preferred_sessions, errors);
+  validateDuplicateDaySessions(schedule.preferred_sessions, errors);
+
   errors.push(
     ...validateFlexibleTypes(
       schedule.preferred_sessions,
@@ -436,6 +439,56 @@ function validateCrossField(formState) {
   validateQualityTouchpoints(schedule.preferred_sessions, errors);
 
   return errors;
+}
+
+// Mirrors validate.py's _validate_duplicate_day_sessions
+// (MULTIPLE_SESSIONS_ON_DAY). A weekday carries one session, and two
+// entries on it are resolved inconsistently downstream - expand.py's
+// _find_preferred takes the first, resolve.py's time-of-day map the last -
+// so an accepted pair schedules one entry's session in the other's half
+// and drops the second silently. Rejected regardless of time_of_day: the
+// plan holds one session per date, so distinct halves don't make both
+// schedulable. Unlike SESSION_TIME_UNAVAILABLE, the grid does *not* make
+// this unreachable - a session cell in each half of one day is exactly
+// what the grid invites, which is why the mirror earns its keep here.
+function validateDuplicateDaySessions(preferred, errors) {
+  const byDay = new Map();
+  for (const session of preferred ?? []) {
+    if (!byDay.has(session.day)) byDay.set(session.day, []);
+    byDay.get(session.day).push(session);
+  }
+
+  for (const day of DAY_NAMES) {
+    const sessions = byDay.get(day);
+    if (!sessions || sessions.length < 2) continue;
+    const halves = sessions.map((s) => s.time_of_day).join(" and ");
+    errors.push(
+      `${day} has a session in both its ${halves} cells, but a day carries` +
+        ' at most one session. Set one cell back to "Available" - the plan' +
+        " still uses an available half for easy volume, so you keep the slot," +
+        " just not the pin.",
+    );
+  }
+}
+
+// A grid cell switched to "Has a session" with no type ticked assembles to
+// a preferred_sessions entry with no `type`, which the schema's `required`
+// then rejects. Ajv reports that against the *assembled array index*
+// (`weekly_schedule.preferred_sessions.0.type`), a path no field on the
+// page carries - the grid's inputs are named by day and half - so the
+// runner gets a summary-only message naming a field they cannot find.
+// Catching it here instead, before the Ajv pass, names the cell itself.
+// No upstream analogue: stage 1 sees only the assembled array, where
+// SCHEMA_INVALID against that same index is the whole story.
+function validateSessionTypePresent(preferred, errors) {
+  for (const session of preferred ?? []) {
+    if (preferredTypes(session).length > 0) continue;
+    errors.push(
+      `The ${session.day} ${session.time_of_day} cell is marked as carrying a` +
+        " session, but no session type is ticked. Tick at least one type, or" +
+        ' set the cell back to "Available".',
+    );
+  }
 }
 
 // Mirrors validate.py's _validate_flexible_types (FLEXIBLE_TYPE_INCLUDES_LONG,
