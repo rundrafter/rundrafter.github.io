@@ -19,6 +19,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
 NOW = "2026-01-01T00:00:00.000Z"
 SCHEMA = json.loads((REPO_ROOT / "schema" / "intake-schema.json").read_text())
+CONSTRAINTS = json.loads((REPO_ROOT / "schema" / "form-constraints.json").read_text())
 
 DAY_NAMES = [
     "Monday",
@@ -408,6 +409,29 @@ def test_uniformly_skip_tailorable_flexible_type_passes(page: Page) -> None:
     assert session["tailored"] is False
 
 
+def test_other_event_flexible_type_including_long_blocks(page: Page) -> None:
+    """The flexible-type rules apply to other_events too (task 10.6, ADR
+    039): an other event offering the long run among several types blocks
+    handoff the same way a weekly session does."""
+    state = valid_state()
+    state["other_events"] = [
+        {"date": "2026-08-16", "type": ["long", "easy"], "description": "Charity fun run"}
+    ]
+    result = run_assemble(page, state)
+    assert any("long run" in e.lower() for e in result["errors"])
+
+
+def test_other_event_flexible_type_mixing_modes_blocks(page: Page) -> None:
+    """An other event mixing running and non-running types blocks handoff
+    (task 10.6) - same FLEXIBLE_TYPE_MIXES_MODES rule as weekly sessions."""
+    state = valid_state()
+    state["other_events"] = [
+        {"date": "2026-08-16", "type": ["easy", "strength"], "description": "Charity fun run"}
+    ]
+    result = run_assemble(page, state)
+    assert any("non-running" in e for e in result["errors"])
+
+
 def test_preferred_session_off_unavailable_day_passes(page: Page) -> None:
     """A weekly session scheduled on an available day is allowed."""
     state = valid_state()
@@ -492,42 +516,213 @@ def test_valid_state_has_no_warnings(page: Page) -> None:
     assert result["warnings"] == []
 
 
-def test_five_unavailable_days_warns_without_blocking(page: Page) -> None:
-    """5+ fully-unavailable days guarantee fewer than 3 trainable days - a
-    non-blocking advisory mirroring SCHEDULE_UNDER_CONSTRAINED."""
-    state = valid_state()
-    state["weekly_schedule"] = {
-        "grid": grid(
-            **{
-                f"{day}_{half}": cell("unavailable")
-                for day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-                for half in ["morning", "evening"]
-            }
-        )
-    }
-    result = run_assemble(page, state)
-    assert result["errors"] == []
-    assert any("trainable" in w.lower() for w in result["warnings"])
-    assert_schema_valid(result["intake"])
+def _unavailable_grid(day_count: int) -> dict[str, Any]:
+    """A grid with the first `day_count` weekdays fully unticked (both
+    halves), leaving `7 - day_count` weekdays with at least one available
+    half."""
+    return grid(
+        **{
+            f"{day}_{half}": cell("unavailable")
+            for day in DAY_NAMES[:day_count]
+            for half in ["morning", "evening"]
+        }
+    )
 
 
-def test_four_unavailable_days_does_not_warn(page: Page) -> None:
-    """4 fully-unavailable days still leaves 3 possibly-trainable days, so no
-    advisory fires - the threshold is 5, not 4."""
+def test_unavailable_days_at_run_day_floor_passes(page: Page) -> None:
+    """Exactly `min_run_days_at_peak` weekdays left with an available half
+    blocks neither on SCHEDULE_BELOW_RUN_DAY_FLOOR nor the older
+    trainable-days warning - the boundary case."""
+    floor = CONSTRAINTS["min_run_days_at_peak"]
     state = valid_state()
-    state["weekly_schedule"] = {
-        "grid": grid(
-            **{
-                f"{day}_{half}": cell("unavailable")
-                for day in ["Monday", "Tuesday", "Wednesday", "Thursday"]
-                for half in ["morning", "evening"]
-            }
-        )
-    }
+    state["weekly_schedule"] = {"grid": _unavailable_grid(7 - floor)}
     result = run_assemble(page, state)
     assert result["errors"] == []
     assert result["warnings"] == []
     assert_schema_valid(result["intake"])
+
+
+def test_unavailable_days_below_run_day_floor_blocks(page: Page) -> None:
+    """One weekday short of `min_run_days_at_peak` blocks on
+    SCHEDULE_BELOW_RUN_DAY_FLOOR (task 10.2) - no rest-day placement can
+    raise this upper bound on trainable days. `MIN_TRAINABLE_DAYS` (3) is
+    stricter than most configured floors, so this boundary case trips only
+    the blocking error, not the older warning."""
+    floor = CONSTRAINTS["min_run_days_at_peak"]
+    state = valid_state()
+    state["weekly_schedule"] = {"grid": _unavailable_grid(8 - floor)}
+    result = run_assemble(page, state)
+    assert any("running days" in e.lower() for e in result["errors"])
+
+
+def test_five_unavailable_days_blocks_and_warns(page: Page) -> None:
+    """5+ fully-unavailable days guarantee fewer than 3 trainable days,
+    tripping both SCHEDULE_BELOW_RUN_DAY_FLOOR (blocking) and the older,
+    non-blocking trainable-days advisory mirroring SCHEDULE_UNDER_CONSTRAINED
+    - the two now overlap since `min_run_days_at_peak` (task 10.2) is
+    typically >= `MIN_TRAINABLE_DAYS` (3)."""
+    state = valid_state()
+    state["weekly_schedule"] = {"grid": _unavailable_grid(5)}
+    result = run_assemble(page, state)
+    assert any("running days" in e.lower() for e in result["errors"])
+    assert any("trainable" in w.lower() for w in result["warnings"])
+
+
+def test_plan_window_too_short_for_goal_distance_blocks(page: Page) -> None:
+    """A plan window shorter than base + minimum build + taper for the
+    goal's distance blocks handoff (task 10.1) - `valid_state`'s marathon
+    goal needs far more than the 4 weeks between start_date and date here."""
+    state = valid_state()
+    state["goal"]["date"] = "2026-06-29"
+    result = run_assemble(page, state)
+    assert any(
+        "fewer than the" in e and "marathon goal needs" in e for e in result["errors"]
+    )
+
+
+def test_quality_touchpoints_at_ceiling_passes(page: Page) -> None:
+    """Exactly `max_quality_touchpoints` pinned touchpoint days, spaced
+    apart, does not exceed the ceiling (task 10.3)."""
+    state = valid_state()
+    state["weekly_schedule"] = {
+        "grid": grid(
+            Monday_morning=cell(type=["quality"]),
+            Wednesday_morning=cell(type=["quality"]),
+            Friday_morning=cell(type=["quality"]),
+        )
+    }
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert_schema_valid(result["intake"])
+
+
+def test_quality_touchpoints_exceeding_ceiling_blocks(page: Page) -> None:
+    """More pinned quality/long touchpoint days than the configured ceiling
+    blocks handoff (task 10.3) - the long run counts as a touchpoint in its
+    own right. Days are spaced apart so this trips only the ceiling, not the
+    adjacency rule below."""
+    state = valid_state()
+    state["weekly_schedule"] = {
+        "grid": grid(
+            Monday_morning=cell(type=["quality"]),
+            Wednesday_morning=cell(type=["quality"]),
+            Friday_morning=cell(type=["quality"]),
+            Sunday_evening=cell(type=["long"]),
+        )
+    }
+    result = run_assemble(page, state)
+    assert any("quality touchpoints" in e.lower() for e in result["errors"])
+
+
+def test_adjacent_quality_days_blocks(page: Page) -> None:
+    """Two pinned quality days on consecutive weekdays blocks handoff (task
+    10.3)."""
+    state = valid_state()
+    state["weekly_schedule"] = {
+        "grid": grid(
+            Saturday_morning=cell(type=["quality"]),
+            Sunday_morning=cell(type=["quality"]),
+        )
+    }
+    result = run_assemble(page, state)
+    assert any("adjacent" in e.lower() for e in result["errors"])
+
+
+def test_sunday_monday_quality_days_count_as_adjacent(page: Page) -> None:
+    """Sunday and Monday count as adjacent too, since the weekly template
+    repeats (task 10.3)."""
+    state = valid_state()
+    state["weekly_schedule"] = {
+        "grid": grid(
+            Sunday_morning=cell(type=["quality"]),
+            Monday_morning=cell(type=["quality"]),
+        )
+    }
+    result = run_assemble(page, state)
+    assert any("adjacent" in e.lower() for e in result["errors"])
+
+
+def test_event_on_fully_unavailable_day_warns(page: Page) -> None:
+    """A B race landing on a weekday with no available half warns, without
+    blocking - the event always wins (task 10.4)."""
+    state = valid_state()
+    state["weekly_schedule"] = {
+        "grid": grid(
+            Tuesday_morning=cell("unavailable"), Tuesday_evening=cell("unavailable")
+        )
+    }
+    state["b_races"] = [
+        {
+            "name": "Tune-up 10k",
+            "distance": "10k",
+            "date": "2026-08-18",  # a Tuesday within the plan window
+            "target_time_mode": "finish",
+        }
+    ]
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert any("takes precedence" in w for w in result["warnings"])
+    assert_schema_valid(result["intake"])
+
+
+def test_event_clashing_with_preferred_session_warns(page: Page) -> None:
+    """An other event landing on a weekday carrying a preferred session
+    warns that the event displaces it (task 10.4)."""
+    state = valid_state()
+    state["weekly_schedule"] = {
+        "grid": grid(Wednesday_morning=cell(type=["quality"], description="intervals"))
+    }
+    state["other_events"] = [
+        {
+            "date": "2026-08-19",  # a Wednesday within the plan window
+            "type": "easy",
+            "description": "Charity fun run",
+        }
+    ]
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert any("takes precedence" in w for w in result["warnings"])
+    assert_schema_valid(result["intake"])
+
+
+def test_goal_faster_than_fitness_warns(page: Page) -> None:
+    """A goal target time implying a VDOT well above current fitness warns,
+    without blocking - training paces still follow current fitness, not the
+    goal (task 10.5)."""
+    state = valid_state()
+    state["goal"]["target_time_h"] = 2
+    state["goal"]["target_time_m"] = 30
+    state["goal"]["target_time_s"] = 0
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert any("above your current vdot" in w.lower() for w in result["warnings"])
+    assert_schema_valid(result["intake"])
+
+
+def test_goal_slower_than_fitness_warns(page: Page) -> None:
+    """A goal target time implying a VDOT well below current fitness warns
+    too (task 10.5)."""
+    state = valid_state()
+    state["goal"]["target_time_h"] = 5
+    state["goal"]["target_time_m"] = 30
+    state["goal"]["target_time_s"] = 0
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert any("below your current vdot" in w.lower() for w in result["warnings"])
+    assert_schema_valid(result["intake"])
+
+
+def test_goal_consistency_skipped_for_suggest_mode(page: Page) -> None:
+    """A 'suggest' goal has no specific goal pace to compare and is
+    calibrated from current fitness, so it's consistent by construction -
+    the goal-consistency check is skipped entirely (task 10.5)."""
+    state = valid_state()
+    state["goal"]["target_time_mode"] = "suggest"
+    for key in ("target_time_h", "target_time_m", "target_time_s"):
+        state["goal"].pop(key, None)
+    result = run_assemble(page, state)
+    assert result["errors"] == []
+    assert result["warnings"] == []
 
 
 def test_timestamps_set_at_handoff(page: Page) -> None:
@@ -774,22 +969,78 @@ def test_dom_smoke_flexible_types_download_as_array(page: Page) -> None:
     assert_schema_valid(downloaded)
 
 
+def test_dom_smoke_unavailable_cell_downloads_as_availability_override(page: Page) -> None:
+    """Marking a tri-state grid cell 'Unavailable' downloads an intake with
+    that half unticked in `weekly_schedule.availability` - the other tri-state
+    (available/session) is exercised by the flexible-types test above."""
+    fill_required_fields(page)
+
+    prefix = "weekly_schedule.grid.Tuesday.morning"
+    page.check(f'[name="{prefix}.state"][value="unavailable"]')
+
+    with page.expect_download() as download_info:
+        page.click('button[type="submit"]')
+
+    downloaded = json.loads(Path(download_info.value.path()).read_text())
+    assert downloaded["weekly_schedule"]["availability"]["Tuesday"] == {"morning": False}
+    assert_schema_valid(downloaded)
+
+
+def test_dom_smoke_structured_duration_composes_time_strings(page: Page) -> None:
+    """The structured h/m/s duration controls compose into the schema's
+    `H:MM:SS`/`M:SS` strings for goal.target_time and recent_result.time -
+    `fill_required_fields` drives these controls; this asserts the composed
+    values rather than just schema validity."""
+    fill_required_fields(page)
+
+    with page.expect_download() as download_info:
+        page.click('button[type="submit"]')
+
+    downloaded = json.loads(Path(download_info.value.path()).read_text())
+    assert downloaded["goal"]["target_time"] == "3:45:00"
+    assert downloaded["recent_result"]["time"] == "1:45:00"
+    assert_schema_valid(downloaded)
+
+
+def test_dom_smoke_b_race_structured_duration_composes(page: Page) -> None:
+    """A B race's structured h/m/s duration control composes into
+    `target_time` the same way the goal's does."""
+    fill_required_fields(page)
+
+    page.click("#add-b-race")
+    page.fill('[name="b_races.0.name"]', "Tune-up 10k")
+    page.select_option('[name="b_races.0.distance"]', "10k")
+    page.fill('[name="b_races.0.date"]', "2026-08-16")
+    page.check('[name="b_races.0.target_time_mode"][value="specific"]')
+    page.fill('[name="b_races.0.target_time_m"]', "45")
+    page.fill('[name="b_races.0.target_time_s"]', "0")
+
+    with page.expect_download() as download_info:
+        page.click('button[type="submit"]')
+
+    downloaded = json.loads(Path(download_info.value.path()).read_text())
+    assert downloaded["b_races"][0]["target_time"] == "45:00"
+    assert_schema_valid(downloaded)
+
+
 def test_dom_smoke_other_event_multi_type_downloads_as_array(page: Page) -> None:
     """Ticking several types on an other-events row downloads an intake
-    whose `type` is the array of exactly those types."""
+    whose `type` is the array of exactly those types. Uses easy+quality, not
+    easy+long: FLEXIBLE_TYPE_INCLUDES_LONG now applies to other_events too
+    (task 10.6), so a long-run entry can't be one option among several."""
     fill_required_fields(page)
 
     page.click("#add-other-event")
     page.fill('[name="other_events.0.date"]', "2026-08-16")
     page.check('[name="other_events.0.type"][value="easy"]')
-    page.check('[name="other_events.0.type"][value="long"]')
+    page.check('[name="other_events.0.type"][value="quality"]')
 
     with page.expect_download() as download_info:
         page.click('button[type="submit"]')
 
     downloaded = json.loads(Path(download_info.value.path()).read_text())
     event = downloaded["other_events"][0]
-    assert event["type"] == ["easy", "long"]
+    assert event["type"] == ["easy", "quality"]
     assert_schema_valid(downloaded)
 
 

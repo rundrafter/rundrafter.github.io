@@ -48,8 +48,8 @@ def run_assemble(page: Page, form_state: dict[str, Any], now: str = NOW):
     )
 
 
-def assert_passes_stage1(tmp_path: Path, intake: dict[str, Any], name: str) -> None:
-    """Run `intake` through the real upstream CLI; fail with its error list."""
+def run_stage1(tmp_path: Path, intake: dict[str, Any], name: str) -> dict[str, Any]:
+    """Run `intake` through the real upstream CLI; return its report."""
     intake_path = tmp_path / f"{name}.json"
     intake_path.write_text(json.dumps(intake))
     canonical_path = tmp_path / f"{name}-canonical.json"
@@ -70,7 +70,12 @@ def assert_passes_stage1(tmp_path: Path, intake: dict[str, Any], name: str) -> N
         capture_output=True,
         text=True,
     )
-    report = json.loads(report_path.read_text())
+    return json.loads(report_path.read_text())
+
+
+def assert_passes_stage1(tmp_path: Path, intake: dict[str, Any], name: str) -> None:
+    """Run `intake` through the real upstream CLI; fail with its error list."""
+    report = run_stage1(tmp_path, intake, name)
     assert report["errors"] == [], f"{name} failed stage 1: {report['errors']}"
 
 
@@ -139,3 +144,36 @@ def test_dom_smoke_download_passes_stage1(tmp_path: Path, page: Page) -> None:
 
     downloaded = json.loads(Path(download_info.value.path()).read_text())
     assert_passes_stage1(tmp_path, downloaded, "dom-smoke")
+
+
+def test_browser_rule_set_is_a_strict_subset_of_stage1s(tmp_path: Path, page: Page) -> None:
+    """The browser's rule set is a documented *subset* of stage 1's, never a
+    replacement (design.md, "Resolver-free checks only") - this asserts
+    that relationship is strict, not accidentally equal.
+
+    SESSION_TIME_UNAVAILABLE is stage-1-only by construction: a preferred
+    session's `time_of_day` pin and the availability grid's unticked halves
+    both come from the same tri-state cell in the browser (assemble.js's
+    `expandGrid`), so a cell is never simultaneously "session" and
+    "unavailable" - there is no browser code path that could even check
+    this. A hand-edited intake.json has no such coupling: `availability`
+    and `preferred_sessions` are independent top-level keys. Starting from
+    an intake the browser has already cleared and then hand-editing in
+    exactly that contradiction demonstrates a rule stage 1 enforces that
+    the browser structurally cannot.
+    """
+    result = run_assemble(page, load_fixture("valid.json"))
+    assert result["errors"] == []
+    intake = result["intake"]
+
+    # valid.json pins its `long` session to Sunday evening (see its grid);
+    # hand-edit in an availability override contradicting that pin.
+    session = intake["weekly_schedule"]["preferred_sessions"][0]
+    assert session["day"] == "Sunday" and session["time_of_day"] == "evening"
+    intake["weekly_schedule"]["availability"] = {"Sunday": {"evening": False}}
+
+    report = run_stage1(tmp_path, intake, "session-time-unavailable")
+    codes = {err["code"] for err in report["errors"]}
+    assert "SESSION_TIME_UNAVAILABLE" in codes, (
+        f"expected stage 1 to reject the hand-edited contradiction; got {report['errors']}"
+    )

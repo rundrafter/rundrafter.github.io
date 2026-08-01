@@ -25,7 +25,7 @@ The cross-field rules in `assets/assemble.js` mirror upstream
 revision is pinned, checked by `just check-contract` against the sibling
 checkout.
 
-rules_revision: f0a80b68fa8ee0dde08b6a89853dec3e2bcc3a34
+rules_revision: a809cca40b2c3f8c494aad20d160aedc17207ce8
 
 After syncing assemble.js (and, if the rule text needs updating, upstream's
 docs/webform-architecture.md) to a rule change upstream, run
