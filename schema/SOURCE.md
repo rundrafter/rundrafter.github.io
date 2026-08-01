@@ -13,7 +13,7 @@ Also generated from upstream `config/defaults.yaml` (the keys named in
 
 Pinned upstream revision:
 
-revision: a809cca40b2c3f8c494aad20d160aedc17207ce8
+revision: ed8ef77c00e3c7b6902bc74686baa7834f7de35f
 
 Re-sync with `just sync-contract` (`uv run python scripts/sync_contract.py`).
 
@@ -25,7 +25,7 @@ The cross-field rules in `assets/assemble.js` mirror upstream
 revision is pinned, checked by `just check-contract` against the sibling
 checkout.
 
-rules_revision: a809cca40b2c3f8c494aad20d160aedc17207ce8
+rules_revision: ed8ef77c00e3c7b6902bc74686baa7834f7de35f
 
 After syncing assemble.js (and, if the rule text needs updating, upstream's
 docs/webform-architecture.md) to a rule change upstream, run
